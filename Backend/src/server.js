@@ -1,5 +1,6 @@
 const app = require('./app');
 const sequelize = require('./config/database');
+const models = require('./models'); // Cargar modelos con asociaciones
 
 const PORT = process.env.PORT || 3000;
 

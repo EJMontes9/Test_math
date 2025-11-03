@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+:root {
+  /* Colores dinámicos de configuración */
+  --color-primary: #3B82F6;
+  --color-secondary: #8B5CF6;
+}
+
 @theme {
   --color-primary-50: #f0f9ff;
   --color-primary-100: #e0f2fe;

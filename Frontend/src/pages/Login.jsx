@@ -59,8 +59,7 @@ const Login = () => {
 
         // Esperar un momento para que se vea el mensaje de éxito
         setTimeout(() => {
-          // TODO: Redirigir al dashboard cuando esté listo
-          // navigate('/dashboard');
+          navigate('/admin/dashboard');
         }, 1500);
       } else {
         setError(result.message || 'Error al iniciar sesión');

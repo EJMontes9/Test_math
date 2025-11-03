@@ -6,6 +6,9 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
+const paraleloRoutes = require('./routes/paraleloRoutes');
+const settingRoutes = require('./routes/settingRoutes');
 
 const app = express();
 
@@ -34,23 +37,32 @@ app.use(cors({
   credentials: true,
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: {
-    success: false,
-    message: 'Demasiadas peticiones desde esta IP, intenta de nuevo más tarde',
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Rate limiting - Solo en producción
+if (process.env.NODE_ENV === 'production') {
+  const limiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutos
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+    message: {
+      success: false,
+      message: 'Demasiadas peticiones desde esta IP, intenta de nuevo más tarde',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
 
-app.use('/api/', limiter);
+  app.use('/api/', limiter);
+  console.log('✅ Rate limiting habilitado (Producción)');
+} else {
+  console.log('⚠️  Rate limiting deshabilitado (Desarrollo)');
+}
 
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Servir archivos estáticos (uploads)
+const path = require('path');
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Logger
 if (process.env.NODE_ENV === 'development') {
@@ -59,6 +71,9 @@ if (process.env.NODE_ENV === 'development') {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/paralelos', paraleloRoutes);
+app.use('/api/settings', settingRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
