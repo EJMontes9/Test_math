@@ -5,30 +5,20 @@
 ### 👨‍💼 ADMINISTRADOR
 ```
 Email: admin@mathmaster.com
-Contraseña: Admin123!
+Contraseña: admin123
 Rol: admin
 ```
 **Permisos**: Acceso completo al sistema
 
 ---
 
-### 👩‍🏫 DOCENTE
+### 👩‍🏫 PROFESOR
 ```
-Email: docente@mathmaster.com
-Contraseña: Docente123!
+Email: profesor@mathmaster.com
+Contraseña: profesor123
 Rol: teacher
 ```
-**Permisos**: Gestión de estudiantes y ejercicios
-
----
-
-### 👨‍🎓 ESTUDIANTE
-```
-Email: estudiante@mathmaster.com
-Contraseña: Estudiante123!
-Rol: student
-```
-**Permisos**: Realizar ejercicios y ver progreso
+**Permisos**: Gestión de paralelos, estudiantes y ejercicios
 
 ---
 
@@ -43,8 +33,8 @@ Rol: student
 6. **ACTUALIZAR** las dependencias periódicamente
 
 ### Recomendaciones de Contraseñas:
-- Mínimo 12 caracteres
-- Incluir mayúsculas, minúsculas, números y símbolos
+- Mínimo 8 caracteres
+- Incluir mayúsculas, minúsculas y números
 - No usar palabras del diccionario
 - Usar un gestor de contraseñas
 
@@ -52,21 +42,15 @@ Rol: student
 
 ## 🚀 Cómo Crear los Usuarios
 
-### Opción 1: Con npm (requiere PostgreSQL local)
-```bash
-cd Backend
-npm run seed
-```
-
-### Opción 2: Con Docker
+### Con Docker (Recomendado)
 ```bash
 # Levantar servicios
 docker-compose up -d
 
-# Esperar a que la base de datos esté lista (30 segundos aprox)
-
-# Ejecutar seed en el contenedor
-docker exec -it mathmaster-backend npm run seed
+# Los usuarios se crean automáticamente al iniciar el backend
+# Si necesitas reinicializar la base de datos:
+docker-compose down -v
+docker-compose up -d --build
 ```
 
 ---
@@ -74,6 +58,6 @@ docker exec -it mathmaster-backend npm run seed
 ## 📝 Notas
 
 - Todos los usuarios están activos por defecto (`isActive: true`)
-- Las contraseñas están encriptadas con bcrypt (10 salt rounds)
+- Las contraseñas están encriptadas con bcrypt
 - Los tokens JWT expiran en 7 días por defecto
 - El administrador puede crear más usuarios a través del sistema

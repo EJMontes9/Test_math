@@ -10,6 +10,32 @@ from app.auth import require_admin
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 
+@router.get("/public", response_model=APIResponse)
+async def get_public_settings(db: Session = Depends(get_db)):
+    """Obtener configuraciones públicas (sin autenticación requerida)"""
+    # Categorías públicas que pueden verse sin autenticación
+    public_categories = ["application", "general"]
+
+    settings = db.query(Setting).filter(
+        Setting.category.in_(public_categories)
+    ).order_by(Setting.category, Setting.key).all()
+
+    # Agrupar por categoría
+    grouped = {}
+    for setting in settings:
+        if setting.category not in grouped:
+            grouped[setting.category] = []
+
+        grouped[setting.category].append({
+            "key": setting.key,
+            "value": parse_value(setting.value, setting.type),
+            "type": setting.type.value,
+            "description": setting.description
+        })
+
+    return APIResponse(success=True, data=grouped)
+
+
 def parse_value(value: str, value_type: SettingType):
     """Convierte el valor de string al tipo correcto"""
     if value is None:

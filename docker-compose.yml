@@ -23,7 +23,7 @@ services:
   # Backend API (FastAPI)
   backend:
     build:
-      context: ./Backend_FastAPI
+      context: ./Backend
       dockerfile: Dockerfile
     container_name: mathmaster-backend
     ports:

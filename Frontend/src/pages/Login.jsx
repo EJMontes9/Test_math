@@ -43,31 +43,49 @@ const Login = () => {
       e.stopPropagation();
     }
 
+    console.log('🔐 Intentando login con:', { email, password: '***' });
+
     setError('');
     setSuccess('');
     setIsLoading(true);
 
     try {
+      console.log('📡 Llamando a authService.login...');
       const result = await authService.login(email, password, rememberMe);
+      console.log('📥 Respuesta del servidor:', result);
 
       if (result.success) {
         setSuccess('¡Bienvenido!');
+        console.log('✅ Login exitoso!');
         console.log('🎉 ¡Bienvenido!', result.user);
         console.log('👤 Usuario:', result.user.firstName, result.user.lastName);
         console.log('📧 Email:', result.user.email);
         console.log('🔐 Rol:', result.user.role);
 
-        // Esperar un momento para que se vea el mensaje de éxito
+        // Redirigir según el rol
         setTimeout(() => {
-          navigate('/admin/dashboard');
+          const redirectPath = result.user.role === 'admin'
+            ? '/admin/dashboard'
+            : result.user.role === 'teacher'
+            ? '/teacher/dashboard'
+            : '/student/dashboard'; // Para futuros estudiantes
+          console.log('🚀 Redirigiendo a:', redirectPath);
+          navigate(redirectPath);
         }, 1500);
       } else {
-        setError(result.message || 'Error al iniciar sesión');
+        console.error('❌ Login falló:', result.message);
+        setError(result.message || 'Credenciales incorrectas');
         setIsLoading(false);
       }
     } catch (err) {
-      console.error('❌ Error en login:', err);
-      setError(err.message || 'Error inesperado. Por favor intenta de nuevo.');
+      console.error('❌ ERROR CAPTURADO:', err);
+      console.error('❌ Error completo:', JSON.stringify(err, null, 2));
+      console.error('❌ Tipo de error:', err.constructor.name);
+      console.error('❌ Stack:', err.stack);
+
+      const errorMessage = err.message || 'Error de conexión con el servidor. Verifica que el backend esté funcionando.';
+      console.error('❌ Mensaje mostrado al usuario:', errorMessage);
+      setError(errorMessage);
       setIsLoading(false);
     }
 

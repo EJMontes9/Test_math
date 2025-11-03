@@ -1,7 +1,18 @@
 import api from './api';
 
 const settingService = {
-  // Obtener todas las configuraciones
+  // Obtener configuraciones públicas (sin autenticación)
+  getPublicSettings: async () => {
+    try {
+      const response = await api.get('/settings/public');
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener configuraciones públicas:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Obtener todas las configuraciones (requiere autenticación admin)
   getAllSettings: async () => {
     try {
       const response = await api.get('/settings');

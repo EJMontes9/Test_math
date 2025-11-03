@@ -10,7 +10,10 @@ import {
   X,
   Brain,
   Settings,
-  ChevronRight
+  ChevronRight,
+  Trophy,
+  Target,
+  Swords
 } from 'lucide-react';
 import authService from '../../services/authService';
 import { useSettings } from '../../context/SettingsContext';
@@ -27,6 +30,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
   };
 
   const menuItems = [
+    // Admin menu
     {
       path: '/admin/dashboard',
       icon: LayoutDashboard,
@@ -51,7 +55,39 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       label: 'Configuración',
       role: ['admin']
     },
-  ];
+
+    // Teacher menu
+    {
+      path: '/teacher/dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      role: ['teacher']
+    },
+    {
+      path: '/teacher/paralelos',
+      icon: BookOpen,
+      label: 'Mis Paralelos',
+      role: ['teacher']
+    },
+    {
+      path: '/teacher/goals',
+      icon: Target,
+      label: 'Metas',
+      role: ['teacher']
+    },
+    {
+      path: '/teacher/versus',
+      icon: Swords,
+      label: 'Versus',
+      role: ['teacher']
+    },
+    {
+      path: '/teacher/ranking',
+      icon: Trophy,
+      label: 'Ranking',
+      role: ['teacher']
+    },
+  ].filter(item => item.role.includes(user?.role));
 
   const isActive = (path) => location.pathname === path;
 
@@ -89,7 +125,9 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold">{settings.app_name || 'MathMaster'}</h1>
-                  <p className="text-xs text-white/70">Admin Panel</p>
+                  <p className="text-xs text-white/70">
+                    {user?.role === 'admin' ? 'Admin Panel' : 'Panel Profesor'}
+                  </p>
                 </div>
               </div>
               <button
@@ -106,7 +144,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
               <p className="text-xs text-white/70">{user?.email}</p>
               <div className="mt-2">
                 <span className="text-xs bg-white/20 px-2 py-1 rounded-full">
-                  {user?.role === 'admin' ? 'Administrador' : user?.role}
+                  {user?.role === 'admin' ? 'Administrador' : user?.role === 'teacher' ? 'Profesor' : 'Estudiante'}
                 </span>
               </div>
             </div>

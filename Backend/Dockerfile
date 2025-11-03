@@ -1,41 +1,30 @@
-# Build stage
-FROM node:20-alpine AS builder
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    gcc \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install dependencies
-RUN npm ci --only=production
+# Copiar requirements
+COPY requirements.txt .
 
-# Production stage
-FROM node:20-alpine
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir -r requirements.txt
 
-WORKDIR /app
-
-# Copy dependencies from builder
-COPY --from=builder /app/node_modules ./node_modules
-
-# Copy source code
+# Copiar código
 COPY . .
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
+# Crear usuario no-root
+RUN useradd -m -u 1001 fastapi && \
+    chown -R fastapi:fastapi /app
 
-# Change ownership
-RUN chown -R nodejs:nodejs /app
+USER fastapi
 
-# Switch to non-root user
-USER nodejs
-
-# Expose port
+# Exponer puerto
 EXPOSE 3000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
-
-# Start application
-CMD ["node", "src/server.js"]
+# Comando para iniciar
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000", "--reload"]

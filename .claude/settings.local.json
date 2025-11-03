@@ -7,7 +7,13 @@
       "Bash(docker exec:*)",
       "Bash(docker-compose restart:*)",
       "Bash(docker-compose down:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(rm:*)",
+      "Bash(mv:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(python3:*)",
+      "Bash(npm run dev)",
+      "Bash(docker-compose build:*)"
     ],
     "deny": [],
     "ask": []

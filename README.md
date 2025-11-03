@@ -1,14 +1,17 @@
 # MathMaster - Plataforma de Ejercicios Matemáticos
 
-Una aplicación web moderna y visual para practicar operaciones combinadas y ecuaciones matemáticas.
+Una aplicación web moderna y visual para practicar operaciones combinadas y ecuaciones matemáticas con gestión de paralelos y estudiantes.
 
 ## 🚀 Características
 
+- **Sistema de Roles**: Admin, Profesores y Estudiantes
+- **Gestión de Paralelos**: Organización de cursos y estudiantes
 - **Login Visual y Atractivo**: Interfaz moderna con animaciones fluidas
 - **Operaciones Combinadas**: Practica operaciones matemáticas complejas
 - **Ecuaciones**: Resuelve ecuaciones paso a paso
+- **Dashboard Interactivo**: Estadísticas y métricas en tiempo real
 - **Responsive Design**: Funciona en todos los dispositivos
-- **Animaciones Suaves**: Usando Framer Motion para una mejor experiencia
+- **API REST**: Backend completo con FastAPI
 
 ## 🛠️ Tecnologías
 
@@ -19,11 +22,23 @@ Una aplicación web moderna y visual para practicar operaciones combinadas y ecu
 - **Framer Motion** - Animaciones fluidas
 - **React Router** - Navegación
 - **Lucide React** - Iconos modernos
+- **Axios** - Cliente HTTP
+
+### Backend
+- **FastAPI** - Framework Python moderno y rápido
+- **SQLAlchemy** - ORM para PostgreSQL
+- **Pydantic** - Validación de datos
+- **JWT** - Autenticación segura
+- **Bcrypt** - Encriptación de contraseñas
+- **Uvicorn** - Servidor ASGI de alto rendimiento
+
+### Base de Datos
+- **PostgreSQL 16** - Base de datos relacional
 
 ### Infraestructura
 - **Docker** - Contenedores
+- **Docker Compose** - Orquestación de servicios
 - **Nginx** - Servidor web optimizado
-- **Railway** - Deployment en la nube
 
 ## 📦 Instalación y Ejecución
 
@@ -34,35 +49,43 @@ Una aplicación web moderna y visual para practicar operaciones combinadas y ecu
 git clone <tu-repo>
 cd Test_math
 
-# Levantar los servicios
-docker-compose up --build
+# Levantar todos los servicios
+docker-compose up -d --build
 
-# La aplicación estará disponible en http://localhost:8080
+# Ver logs
+docker-compose logs -f
+
+# La aplicación estará disponible en:
+# - Frontend (Docker): http://localhost:8080
+# - Backend API: http://localhost:3000
+# - Documentación API: http://localhost:3000/docs
 ```
 
 ### Desarrollo Local
 
+#### Frontend
 ```bash
-# Instalar dependencias del frontend
 cd Frontend
 npm install
-
-# Iniciar servidor de desarrollo
 npm run dev
-
-# La aplicación estará disponible en http://localhost:5173
+# Disponible en http://localhost:5173
 ```
 
-## 🚢 Deployment en Railway
+#### Backend
+```bash
+cd Backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 3000
+# Disponible en http://localhost:3000
+```
 
-1. Conecta tu repositorio a Railway
-2. Railway detectará automáticamente el `railway.json`
-3. Las variables de entorno se configuran en el dashboard de Railway
-4. El deployment se hace automáticamente
+## 🔐 Credenciales de Acceso
 
-### Variables de Entorno Necesarias
+Ver archivo `CREDENCIALES.md` para usuarios de prueba.
 
-Ver `.env.example` para la lista completa de variables.
+**Credenciales rápidas**:
+- Admin: `admin@mathmaster.com` / `admin123`
+- Profesor: `profesor@mathmaster.com` / `profesor123`
 
 ## 📁 Estructura del Proyecto
 
@@ -71,17 +94,27 @@ Test_math/
 ├── Frontend/                 # Aplicación React
 │   ├── src/
 │   │   ├── components/      # Componentes reutilizables
+│   │   │   └── layout/      # Layouts (Admin, Teacher)
 │   │   ├── pages/           # Páginas de la aplicación
-│   │   │   └── Login.jsx    # Página de login
-│   │   ├── assets/          # Recursos estáticos
-│   │   ├── App.jsx          # Componente principal
-│   │   └── main.jsx         # Punto de entrada
+│   │   │   ├── Login.jsx    # Página de login
+│   │   │   ├── admin/       # Páginas de administrador
+│   │   │   └── teacher/     # Páginas de profesor
+│   │   ├── services/        # Servicios API
+│   │   ├── context/         # Contextos React
+│   │   └── utils/           # Utilidades
 │   ├── Dockerfile           # Configuración Docker
-│   ├── nginx.conf           # Configuración Nginx
 │   └── package.json         # Dependencias
-├── Backend/                  # API Backend (próximamente)
+├── Backend/                  # API FastAPI
+│   ├── app/
+│   │   ├── routers/         # Endpoints de la API
+│   │   ├── models/          # Modelos de base de datos
+│   │   ├── schemas/         # Esquemas Pydantic
+│   │   ├── auth.py          # Autenticación JWT
+│   │   ├── database.py      # Configuración DB
+│   │   └── main.py          # Punto de entrada
+│   ├── Dockerfile           # Configuración Docker
+│   └── requirements.txt     # Dependencias Python
 ├── docker-compose.yml       # Orquestación de servicios
-├── railway.json             # Configuración Railway
 └── README.md                # Este archivo
 ```
 
@@ -93,31 +126,57 @@ Test_math/
 - **Iconos Flotantes**: Elementos matemáticos animados en el fondo
 - **Hover Effects**: Interacciones visuales al pasar el mouse
 - **Loading States**: Indicadores de carga animados
+- **Sidebar Responsivo**: Navegación adaptable
 
 ## 🔜 Próximas Características
 
-- [ ] Dashboard principal
-- [ ] Módulo de Operaciones Combinadas
-- [ ] Módulo de Ecuaciones
-- [ ] Sistema de puntuación
+- [ ] Módulo de Operaciones Combinadas completo
+- [ ] Módulo de Ecuaciones completo
+- [ ] Sistema de puntuación y ranking
 - [ ] Historial de ejercicios
-- [ ] Perfil de usuario
-- [ ] Backend con API REST
-- [ ] Base de datos PostgreSQL
+- [ ] Reportes y analytics
+- [ ] Sistema de metas (versus)
+- [ ] Notificaciones en tiempo real
 
 ## 📝 Scripts Disponibles
 
+### Frontend
 ```bash
-# Desarrollo
-npm run dev          # Inicia servidor de desarrollo
-
-# Producción
-npm run build        # Construye para producción
+npm run dev          # Servidor de desarrollo
+npm run build        # Build para producción
 npm run preview      # Preview de la build
+```
 
-# Docker
-docker-compose up    # Inicia todos los servicios
-docker-compose down  # Detiene todos los servicios
+### Backend
+```bash
+uvicorn app.main:app --reload  # Servidor de desarrollo
+```
+
+### Docker
+```bash
+docker-compose up -d           # Inicia todos los servicios
+docker-compose down            # Detiene todos los servicios
+docker-compose logs -f         # Ver logs en tiempo real
+docker-compose restart backend # Reiniciar servicio específico
+```
+
+## 🔧 Variables de Entorno
+
+Ver `.env.example` para la lista completa. Las principales son:
+
+```env
+# Frontend
+VITE_API_URL=http://localhost:3000/api
+
+# Backend
+PORT=3000
+DB_HOST=db
+DB_PORT=5432
+DB_NAME=mathmaster_db
+DB_USER=mathmaster
+DB_PASSWORD=mathmaster123
+JWT_SECRET=mathmaster-super-secret-jwt-key-2024
+JWT_EXPIRES_IN=7
 ```
 
 ## 🤝 Contribuir

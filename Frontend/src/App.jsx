@@ -1,17 +1,21 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { SettingsProvider } from './context/SettingsContext';
+import { AuthProvider } from './context/AuthContext';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminLayout from './components/layout/AdminLayout';
+import TeacherLayout from './components/layout/TeacherLayout';
 import Dashboard from './pages/admin/Dashboard';
 import Users from './pages/admin/Users';
 import Paralelos from './pages/admin/Paralelos';
 import Settings from './pages/admin/Settings';
+import TeacherDashboard from './pages/teacher/Dashboard';
 
 function App() {
   return (
-    <SettingsProvider>
-      <Router>
+    <AuthProvider>
+      <SettingsProvider>
+        <Router>
         <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
@@ -24,6 +28,16 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="paralelos" element={<Paralelos />} />
           <Route path="settings" element={<Settings />} />
+        </Route>
+
+        {/* Teacher Routes */}
+        <Route path="/teacher" element={<TeacherLayout />}>
+          <Route index element={<Navigate to="/teacher/dashboard" replace />} />
+          <Route path="dashboard" element={<TeacherDashboard />} />
+          <Route path="paralelos" element={<div className="p-6">Mis Paralelos - En construcción</div>} />
+          <Route path="goals" element={<div className="p-6">Metas - En construcción</div>} />
+          <Route path="versus" element={<div className="p-6">Versus - En construcción</div>} />
+          <Route path="ranking" element={<div className="p-6">Ranking - En construcción</div>} />
         </Route>
 
         {/* Unauthorized */}
@@ -46,8 +60,9 @@ function App() {
           </div>
         } />
       </Routes>
-      </Router>
-    </SettingsProvider>
+        </Router>
+      </SettingsProvider>
+    </AuthProvider>
   );
 }
 

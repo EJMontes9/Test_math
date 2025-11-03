@@ -2,10 +2,12 @@ import { motion } from 'framer-motion';
 import { Users, BookOpen, GraduationCap, TrendingUp, Activity, Award, RefreshCw } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import userService from '../../services/userService';
+import api from '../../services/api';
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
+  const [paralelos, setParalelos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const intervalRef = useRef(null);
@@ -25,12 +27,19 @@ const Dashboard = () => {
       // Obtener todos los usuarios activos para la actividad
       const usersResponse = await userService.getAllUsers({ status: 'active' });
 
+      // Obtener paralelos
+      const paralelosResponse = await api.get('/api/paralelos/');
+
       if (statsResponse.success) {
         setStats(statsResponse.data);
       }
 
       if (usersResponse.success) {
         setUsers(usersResponse.data);
+      }
+
+      if (paralelosResponse.data.success) {
+        setParalelos(paralelosResponse.data.data);
       }
     } catch (error) {
       console.error('Error al cargar datos del dashboard:', error);
@@ -60,6 +69,9 @@ const Dashboard = () => {
   const statsCards = useMemo(() => {
     if (!stats) return [];
 
+    const paralelosActivos = paralelos.filter(p => p.isActive).length;
+    const totalEstudiantes = paralelos.reduce((sum, p) => sum + (p.studentCount || 0), 0);
+
     return [
       {
         title: 'Total Usuarios',
@@ -72,8 +84,8 @@ const Dashboard = () => {
       },
       {
         title: 'Paralelos Activos',
-        value: '0',
-        change: 'Próximamente',
+        value: paralelosActivos.toString(),
+        change: `${paralelos.length} total`,
         icon: BookOpen,
         color: 'from-purple-500 to-purple-600',
         bgColor: 'bg-purple-50',
@@ -98,7 +110,7 @@ const Dashboard = () => {
         textColor: 'text-orange-600'
       },
     ];
-  }, [stats]);
+  }, [stats, paralelos]);
 
   // Actividad reciente - useMemo para evitar recalcular innecesariamente
   const recentActivity = useMemo(() => {

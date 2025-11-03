@@ -23,7 +23,7 @@ export const SettingsProvider = ({ children }) => {
 
   const loadSettings = async () => {
     try {
-      const response = await settingService.getAllSettings();
+      const response = await settingService.getPublicSettings();
       if (response.success) {
         // Convertir a objeto plano
         const flatSettings = {};
