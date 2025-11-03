@@ -28,7 +28,7 @@ const Dashboard = () => {
       const usersResponse = await userService.getAllUsers({ status: 'active' });
 
       // Obtener paralelos
-      const paralelosResponse = await api.get('/api/paralelos/');
+      const paralelosResponse = await api.get('/paralelos/');
 
       if (statsResponse.success) {
         setStats(statsResponse.data);

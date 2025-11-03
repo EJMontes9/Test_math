@@ -5,11 +5,18 @@ import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import AdminLayout from './components/layout/AdminLayout';
 import TeacherLayout from './components/layout/TeacherLayout';
+import StudentLayout from './components/layout/StudentLayout';
 import Dashboard from './pages/admin/Dashboard';
 import Users from './pages/admin/Users';
 import Paralelos from './pages/admin/Paralelos';
 import Settings from './pages/admin/Settings';
 import TeacherDashboard from './pages/teacher/Dashboard';
+import MyParalelos from './pages/teacher/MyParalelos';
+import ParaleloStudents from './pages/teacher/ParaleloStudents';
+import StudentDetail from './pages/teacher/StudentDetail';
+import StudentDashboard from './pages/student/Dashboard';
+import Game from './pages/student/Game';
+import Ranking from './pages/student/Ranking';
 
 function App() {
   return (
@@ -34,10 +41,20 @@ function App() {
         <Route path="/teacher" element={<TeacherLayout />}>
           <Route index element={<Navigate to="/teacher/dashboard" replace />} />
           <Route path="dashboard" element={<TeacherDashboard />} />
-          <Route path="paralelos" element={<div className="p-6">Mis Paralelos - En construcción</div>} />
+          <Route path="paralelos" element={<MyParalelos />} />
+          <Route path="paralelo/:paraleloId/students" element={<ParaleloStudents />} />
+          <Route path="student/:studentId" element={<StudentDetail />} />
           <Route path="goals" element={<div className="p-6">Metas - En construcción</div>} />
           <Route path="versus" element={<div className="p-6">Versus - En construcción</div>} />
           <Route path="ranking" element={<div className="p-6">Ranking - En construcción</div>} />
+        </Route>
+
+        {/* Student Routes */}
+        <Route path="/student" element={<StudentLayout />}>
+          <Route index element={<Navigate to="/student/dashboard" replace />} />
+          <Route path="dashboard" element={<StudentDashboard />} />
+          <Route path="game" element={<Game />} />
+          <Route path="ranking" element={<Ranking />} />
         </Route>
 
         {/* Unauthorized */}

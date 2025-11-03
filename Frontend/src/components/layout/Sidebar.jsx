@@ -87,6 +87,26 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       label: 'Ranking',
       role: ['teacher']
     },
+
+    // Student menu
+    {
+      path: '/student/dashboard',
+      icon: LayoutDashboard,
+      label: 'Dashboard',
+      role: ['student']
+    },
+    {
+      path: '/student/game',
+      icon: Trophy,
+      label: 'Jugar',
+      role: ['student']
+    },
+    {
+      path: '/student/ranking',
+      icon: Users,
+      label: 'Ranking',
+      role: ['student']
+    },
   ].filter(item => item.role.includes(user?.role));
 
   const isActive = (path) => location.pathname === path;

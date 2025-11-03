@@ -143,6 +143,22 @@ class SettingBulkUpdate(BaseModel):
     settings: List[SettingCreate]
 
 
+# ============= Student Game Schemas =============
+class SubmitAnswerRequest(BaseModel):
+    session_id: UUID
+    exercise_id: UUID
+    answer: str
+    time_taken: int
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class EndGameRequest(BaseModel):
+    session_id: UUID
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 # ============= Generic API Response =============
 class APIResponse(BaseModel):
     success: bool

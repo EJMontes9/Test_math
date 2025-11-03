@@ -40,14 +40,14 @@ export default function TeacherDashboard() {
     try {
       setLoading(true);
       // Obtener paralelos del profesor
-      const paralelosRes = await api.get('/api/paralelos/');
+      const paralelosRes = await api.get('/paralelos/');
       const myParalelos = paralelosRes.data.data.filter(
         p => p.teacher?.id === user.id
       );
       setParalelos(myParalelos);
 
       // Obtener todos los estudiantes
-      const studentsRes = await api.get('/api/users/?role=student');
+      const studentsRes = await api.get('/users/?role=student');
       setStudents(studentsRes.data.data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

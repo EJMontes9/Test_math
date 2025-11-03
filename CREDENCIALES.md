@@ -12,13 +12,29 @@ Rol: admin
 
 ---
 
-### 👩‍🏫 PROFESOR
+### 👩‍🏫 PROFESOR/DOCENTE
 ```
-Email: profesor@mathmaster.com
-Contraseña: profesor123
+Email: docente@mathmaster.com
+Contraseña: docente123
 Rol: teacher
 ```
 **Permisos**: Gestión de paralelos, estudiantes y ejercicios
+
+---
+
+### 👨‍🎓 ESTUDIANTES
+```
+Email: estudiante1@mathmaster.com - Juan Pérez
+Email: estudiante2@mathmaster.com - María González
+Email: estudiante3@mathmaster.com - Carlos Rodríguez
+Email: estudiante4@mathmaster.com - Ana Martínez
+Email: estudiante5@mathmaster.com - Luis López
+
+Contraseña (todos): estudiante123
+Rol: student
+Paralelo: 6to Básico A
+```
+**Permisos**: Jugar ejercicios matemáticos, ver progreso y ranking
 
 ---
 

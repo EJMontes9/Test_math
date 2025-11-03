@@ -9,7 +9,7 @@ from slowapi.middleware import SlowAPIMiddleware
 import time
 from app.config import get_settings
 from app.database import engine, Base
-from app.routers import auth, users, paralelos
+from app.routers import auth, users, paralelos, teacher, student
 from app.routers import settings as settings_router
 
 settings = get_settings()
@@ -112,6 +112,8 @@ async def health_check():
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(paralelos.router)
+app.include_router(teacher.router)
+app.include_router(student.router)
 app.include_router(settings_router.router)
 
 
