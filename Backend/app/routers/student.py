@@ -7,7 +7,8 @@ from datetime import datetime
 from app.database import get_db
 from app.models import (
     User, UserRole, GameSession, Exercise, ExerciseAttempt,
-    StudentTopicProgress, MathTopic, ExerciseDifficulty, Enrollment, Paralelo
+    StudentTopicProgress, MathTopic, ExerciseDifficulty, Enrollment, Paralelo,
+    Goal, StudentGoal, GoalStatus, GoalType
 )
 from app import schemas
 from app.schemas import APIResponse
@@ -25,6 +26,90 @@ def require_student(current_user: User = Depends(get_current_user)):
     if current_user.role not in [UserRole.student, UserRole.admin]:
         raise HTTPException(status_code=403, detail="Acceso denegado. Se requiere rol de estudiante")
     return current_user
+
+
+def update_student_goals_progress(student_id: UUID, topic: MathTopic, is_correct: bool, db: Session):
+    """Actualizar el progreso de las metas del estudiante despues de cada ejercicio"""
+    now = datetime.now()
+
+    # Obtener metas activas del estudiante
+    active_goals = db.query(StudentGoal).join(Goal).filter(
+        StudentGoal.student_id == student_id,
+        StudentGoal.status == GoalStatus.active,
+        Goal.is_active == True,
+        Goal.start_date <= now,
+        Goal.end_date >= now
+    ).all()
+
+    for student_goal in active_goals:
+        goal = student_goal.goal
+        updated = False
+
+        if goal.goal_type == GoalType.exercises:
+            # Meta de ejercicios completados: +1 por cada ejercicio
+            student_goal.current_value += 1
+            updated = True
+
+        elif goal.goal_type == GoalType.accuracy:
+            # Meta de precision: calcular % de aciertos
+            total_attempts = db.query(func.count(ExerciseAttempt.id)).filter(
+                ExerciseAttempt.student_id == student_id
+            ).scalar() or 0
+            correct_attempts = db.query(func.count(ExerciseAttempt.id)).filter(
+                ExerciseAttempt.student_id == student_id,
+                ExerciseAttempt.is_correct == True
+            ).scalar() or 0
+            if total_attempts > 0:
+                student_goal.current_value = int((correct_attempts / total_attempts) * 100)
+                updated = True
+
+        elif goal.goal_type == GoalType.points:
+            # Meta de puntos: sumar puntos totales de sesiones
+            total_points = db.query(func.sum(GameSession.total_score)).filter(
+                GameSession.student_id == student_id
+            ).scalar() or 0
+            student_goal.current_value = total_points
+            updated = True
+
+        elif goal.goal_type == GoalType.streak:
+            # Meta de racha: calcular respuestas correctas consecutivas
+            if is_correct:
+                # Obtener ultimos intentos para calcular racha actual
+                recent_attempts = db.query(ExerciseAttempt).filter(
+                    ExerciseAttempt.student_id == student_id
+                ).order_by(ExerciseAttempt.attempted_at.desc()).limit(100).all()
+
+                streak = 0
+                for attempt in recent_attempts:
+                    if attempt.is_correct:
+                        streak += 1
+                    else:
+                        break
+
+                # Solo actualizar si la racha actual es mayor
+                if streak > student_goal.current_value:
+                    student_goal.current_value = streak
+                    updated = True
+
+        elif goal.goal_type == GoalType.topic_mastery:
+            # Meta de dominio de tema: verificar si el tema coincide
+            if goal.topic == topic:
+                topic_progress = db.query(StudentTopicProgress).filter(
+                    StudentTopicProgress.student_id == student_id,
+                    StudentTopicProgress.topic == topic
+                ).first()
+                if topic_progress:
+                    # Usar nivel de maestria (0-100)
+                    student_goal.current_value = int(topic_progress.mastery_level * 100)
+                    updated = True
+
+        # Verificar si la meta fue completada
+        if updated and student_goal.current_value >= goal.target_value:
+            student_goal.status = GoalStatus.completed
+            student_goal.completed_at = now
+            student_goal.points_earned = goal.reward_points
+
+    db.flush()
 
 
 @router.post("/game/start", response_model=APIResponse)
@@ -190,6 +275,14 @@ async def submit_answer(
     # Actualizar progreso del tema
     AIRecommendations.update_topic_progress(
         str(current_user.id),
+        exercise.topic,
+        is_correct,
+        db
+    )
+
+    # Actualizar progreso de metas del estudiante
+    update_student_goals_progress(
+        current_user.id,
         exercise.topic,
         is_correct,
         db
