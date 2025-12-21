@@ -131,6 +131,65 @@ async def get_my_paralelos(
     return APIResponse(success=True, data=paralelos_data)
 
 
+@router.get("/paralelo/{paralelo_id}/stats", response_model=APIResponse)
+async def get_paralelo_stats(
+    paralelo_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Obtener estadisticas generales de un paralelo"""
+    # Verificar que el paralelo pertenezca al profesor
+    paralelo = db.query(Paralelo).filter(
+        Paralelo.id == paralelo_id,
+        Paralelo.teacher_id == current_user.id
+    ).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    # Obtener IDs de estudiantes del paralelo
+    student_ids = db.query(Enrollment.student_id).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).all()
+    student_ids = [s[0] for s in student_ids]
+
+    # Total de ejercicios realizados
+    total_exercises = db.query(func.count(ExerciseAttempt.id)).filter(
+        ExerciseAttempt.student_id.in_(student_ids)
+    ).scalar() or 0
+
+    # Ejercicios correctos
+    correct_exercises = db.query(func.count(ExerciseAttempt.id)).filter(
+        ExerciseAttempt.student_id.in_(student_ids),
+        ExerciseAttempt.is_correct == True
+    ).scalar() or 0
+
+    # Precision promedio
+    avg_accuracy = round((correct_exercises / total_exercises * 100) if total_exercises > 0 else 0, 1)
+
+    # Estudiantes activos (que han hecho al menos 1 ejercicio en la ultima semana)
+    week_ago = datetime.now() - timedelta(days=7)
+    active_students = db.query(func.count(func.distinct(ExerciseAttempt.student_id))).filter(
+        ExerciseAttempt.student_id.in_(student_ids),
+        ExerciseAttempt.attempted_at >= week_ago
+    ).scalar() or 0
+
+    # Puntos totales de sesiones de juego
+    total_points = db.query(func.sum(GameSession.total_score)).filter(
+        GameSession.student_id.in_(student_ids)
+    ).scalar() or 0
+
+    return APIResponse(success=True, data={
+        "totalExercises": total_exercises,
+        "correctExercises": correct_exercises,
+        "avgAccuracy": avg_accuracy,
+        "activeStudents": active_students,
+        "totalStudents": len(student_ids),
+        "totalPoints": total_points
+    })
+
+
 @router.get("/paralelo/{paralelo_id}/students", response_model=APIResponse)
 async def get_paralelo_students(
     paralelo_id: UUID,

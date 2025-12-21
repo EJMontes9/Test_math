@@ -179,6 +179,28 @@ const teacherService = {
     }
   },
 
+  // ============= STATS (ESTADISTICAS) =============
+
+  // Obtener estadisticas de un paralelo
+  getParaleloStats: async (paraleloId) => {
+    try {
+      const response = await api.get(`/teacher/paralelo/${paraleloId}/stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener estadisticas:', error);
+      // Retornar datos por defecto si falla
+      return {
+        success: true,
+        data: {
+          totalExercises: 0,
+          avgAccuracy: 0,
+          activeStudents: 0,
+          totalPoints: 0
+        }
+      };
+    }
+  },
+
   // ============= RANKING =============
 
   // Obtener ranking de estudiantes

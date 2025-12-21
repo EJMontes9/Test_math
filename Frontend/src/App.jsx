@@ -17,9 +17,15 @@ import StudentDetail from './pages/teacher/StudentDetail';
 import Goals from './pages/teacher/Goals';
 import Versus from './pages/teacher/Versus';
 import TeacherRanking from './pages/teacher/TeacherRanking';
+import TeacherResources from './pages/teacher/Resources';
+import TeacherPerformance from './pages/teacher/Performance';
 import StudentDashboard from './pages/student/Dashboard';
 import Game from './pages/student/Game';
 import Ranking from './pages/student/Ranking';
+import StudentGoals from './pages/student/Goals';
+import StudentChallenges from './pages/student/Challenges';
+import StudentBadges from './pages/student/Badges';
+import StudentResources from './pages/student/Resources';
 import Profile from './pages/Profile';
 
 function App() {
@@ -52,6 +58,8 @@ function App() {
           <Route path="goals" element={<Goals />} />
           <Route path="versus" element={<Versus />} />
           <Route path="ranking" element={<TeacherRanking />} />
+          <Route path="resources" element={<TeacherResources />} />
+          <Route path="performance" element={<TeacherPerformance />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 
@@ -61,6 +69,10 @@ function App() {
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="game" element={<Game />} />
           <Route path="ranking" element={<Ranking />} />
+          <Route path="goals" element={<StudentGoals />} />
+          <Route path="challenges" element={<StudentChallenges />} />
+          <Route path="badges" element={<StudentBadges />} />
+          <Route path="resources" element={<StudentResources />} />
           <Route path="profile" element={<Profile />} />
         </Route>
 

@@ -159,6 +159,14 @@ class EndGameRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SubmitChallengeAnswerRequest(BaseModel):
+    exercise_id: UUID
+    answer: str
+    time_taken: int
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 # ============= Generic API Response =============
 class APIResponse(BaseModel):
     success: bool

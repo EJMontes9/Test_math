@@ -22,17 +22,12 @@ Rol: teacher
 
 ---
 
-### 👨‍🎓 ESTUDIANTES
-```
-Email: estudiante1@mathmaster.com - Juan Pérez
-Email: estudiante2@mathmaster.com - María González
-Email: estudiante3@mathmaster.com - Carlos Rodríguez
-Email: estudiante4@mathmaster.com - Ana Martínez
-Email: estudiante5@mathmaster.com - Luis López
+### 👨‍🎓 ESTUDIANTE
 
-Contraseña (todos): estudiante123
+```
+Email: estudiante@mathmaster.com
+Contraseña: estudiante123
 Rol: student
-Paralelo: 6to Básico A
 ```
 **Permisos**: Jugar ejercicios matemáticos, ver progreso y ranking
 
@@ -58,15 +53,23 @@ Paralelo: 6to Básico A
 
 ## 🚀 Cómo Crear los Usuarios
 
+**IMPORTANTE**: Los usuarios NO se crean automáticamente. Debes ejecutar el script de creación.
+
 ### Con Docker (Recomendado)
 ```bash
-# Levantar servicios
+# 1. Levantar servicios
 docker-compose up -d
 
-# Los usuarios se crean automáticamente al iniciar el backend
-# Si necesitas reinicializar la base de datos:
+# 2. Ejecutar script de creación de usuarios
+docker-compose exec backend python create_default_users.py
+
+# Si necesitas resetear contraseñas:
+docker-compose exec backend python reset_passwords.py
+
+# Si necesitas reinicializar la base de datos desde cero:
 docker-compose down -v
 docker-compose up -d --build
+docker-compose exec backend python create_default_users.py
 ```
 
 ---

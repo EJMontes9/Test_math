@@ -319,3 +319,83 @@ class ChallengeParticipant(Base):
     # Relationships
     challenge = relationship("Challenge", back_populates="participants")
     student = relationship("User")
+
+
+# ============= SISTEMA DE INSIGNIAS =============
+
+class BadgeType(str, enum.Enum):
+    title = "title"  # Título debajo del nombre
+    border = "border"  # Borde/marco para el avatar
+    effect = "effect"  # Efecto visual
+
+
+class BadgeRarity(str, enum.Enum):
+    common = "common"
+    rare = "rare"
+    epic = "epic"
+    legendary = "legendary"
+
+
+# Definición de insignias disponibles
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)  # Ej: "Imparable", "Maestro", "Veloz"
+    description = Column(Text, nullable=True)
+    badge_type = Column(SQLEnum(BadgeType), nullable=False, default=BadgeType.title)
+    rarity = Column(SQLEnum(BadgeRarity), nullable=False, default=BadgeRarity.common)
+    icon = Column(String, nullable=True)  # Emoji o nombre de icono
+    color = Column(String, nullable=True)  # Color del borde o efecto
+    requirement_type = Column(String, nullable=False)  # correct_streak, daily_exercises, total_points, etc
+    requirement_value = Column(Integer, nullable=False)  # Valor necesario para obtenerla
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    student_badges = relationship("StudentBadge", back_populates="badge", cascade="all, delete-orphan")
+
+
+# Insignias obtenidas por estudiantes
+class StudentBadge(Base):
+    __tablename__ = "student_badges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    badge_id = Column(UUID(as_uuid=True), ForeignKey("badges.id"), nullable=False)
+    is_equipped = Column(Boolean, default=False)  # Si está equipada/activa
+    earned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    student = relationship("User")
+    badge = relationship("Badge", back_populates="student_badges")
+
+
+# ============= RECURSOS COMPLEMENTARIOS =============
+
+class ResourceType(str, enum.Enum):
+    pdf = "pdf"
+    video = "video"
+    link = "link"
+
+
+class Resource(Base):
+    __tablename__ = "resources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)  # null = todos
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    resource_type = Column(SQLEnum(ResourceType), nullable=False)
+    topic = Column(SQLEnum(MathTopic), nullable=True)  # Tema relacionado
+    url = Column(Text, nullable=False)  # URL del recurso o path del archivo
+    thumbnail = Column(String, nullable=True)  # Imagen de preview
+    is_active = Column(Boolean, default=True)
+    view_count = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    teacher = relationship("User")
+    paralelo = relationship("Paralelo")
