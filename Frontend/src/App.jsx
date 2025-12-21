@@ -14,6 +14,9 @@ import TeacherDashboard from './pages/teacher/Dashboard';
 import MyParalelos from './pages/teacher/MyParalelos';
 import ParaleloStudents from './pages/teacher/ParaleloStudents';
 import StudentDetail from './pages/teacher/StudentDetail';
+import Goals from './pages/teacher/Goals';
+import Versus from './pages/teacher/Versus';
+import TeacherRanking from './pages/teacher/TeacherRanking';
 import StudentDashboard from './pages/student/Dashboard';
 import Game from './pages/student/Game';
 import Ranking from './pages/student/Ranking';
@@ -44,9 +47,9 @@ function App() {
           <Route path="paralelos" element={<MyParalelos />} />
           <Route path="paralelo/:paraleloId/students" element={<ParaleloStudents />} />
           <Route path="student/:studentId" element={<StudentDetail />} />
-          <Route path="goals" element={<div className="p-6">Metas - En construcción</div>} />
-          <Route path="versus" element={<div className="p-6">Versus - En construcción</div>} />
-          <Route path="ranking" element={<div className="p-6">Ranking - En construcción</div>} />
+          <Route path="goals" element={<Goals />} />
+          <Route path="versus" element={<Versus />} />
+          <Route path="ranking" element={<TeacherRanking />} />
         </Route>
 
         {/* Student Routes */}
