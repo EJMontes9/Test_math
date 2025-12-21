@@ -20,6 +20,7 @@ import TeacherRanking from './pages/teacher/TeacherRanking';
 import StudentDashboard from './pages/student/Dashboard';
 import Game from './pages/student/Game';
 import Ranking from './pages/student/Ranking';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="paralelos" element={<Paralelos />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         {/* Teacher Routes */}
@@ -50,6 +52,7 @@ function App() {
           <Route path="goals" element={<Goals />} />
           <Route path="versus" element={<Versus />} />
           <Route path="ranking" element={<TeacherRanking />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         {/* Student Routes */}
@@ -58,6 +61,7 @@ function App() {
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="game" element={<Game />} />
           <Route path="ranking" element={<Ranking />} />
+          <Route path="profile" element={<Profile />} />
         </Route>
 
         {/* Unauthorized */}

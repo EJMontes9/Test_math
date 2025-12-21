@@ -2,11 +2,13 @@ from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
+from fastapi.staticfiles import StaticFiles
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 import time
+import os
 from app.config import get_settings
 from app.database import engine, Base
 from app.routers import auth, users, paralelos, teacher, student
@@ -115,6 +117,10 @@ app.include_router(paralelos.router)
 app.include_router(teacher.router)
 app.include_router(student.router)
 app.include_router(settings_router.router)
+
+# Servir archivos estáticos (avatares, etc.)
+os.makedirs("static/avatars", exist_ok=True)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 
 # Evento de inicio

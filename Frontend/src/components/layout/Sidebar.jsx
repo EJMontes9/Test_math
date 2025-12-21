@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Trophy,
   Target,
-  Swords
+  Swords,
+  UserCircle
 } from 'lucide-react';
 import authService from '../../services/authService';
 import { useSettings } from '../../context/SettingsContext';
@@ -200,8 +201,20 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
             </ul>
           </nav>
 
-          {/* Logout Button */}
-          <div className="p-4 border-t border-white/20">
+          {/* Profile & Logout Buttons */}
+          <div className="p-4 border-t border-white/20 space-y-2">
+            <Link
+              to={`/${user?.role}/profile`}
+              className={`w-full flex items-center justify-center space-x-2 p-3 rounded-xl transition-colors ${
+                location.pathname.includes('/profile')
+                  ? 'bg-white shadow-lg'
+                  : 'bg-white/10 hover:bg-white/20'
+              }`}
+              style={location.pathname.includes('/profile') ? { color: 'var(--color-primary)' } : {}}
+            >
+              <UserCircle className="w-5 h-5" />
+              <span className="font-medium">Mi Perfil</span>
+            </Link>
             <button
               onClick={handleLogout}
               className="w-full flex items-center justify-center space-x-2 p-3 bg-red-500/20 hover:bg-red-500/30 rounded-xl transition-colors"
