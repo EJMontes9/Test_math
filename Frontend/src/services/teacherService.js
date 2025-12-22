@@ -193,6 +193,32 @@ const teacherService = {
       console.error('Error al obtener ranking:', error);
       throw error.response?.data || { success: false, message: 'Error de conexión' };
     }
+  },
+
+  // ============= PARALELOS =============
+
+  // Obtener paralelos (alias para getMyParalelos)
+  getParalelos: async () => {
+    try {
+      const response = await api.get('/teacher/my-paralelos');
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener paralelos:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // ============= PERFORMANCE =============
+
+  // Obtener desempeno de un paralelo
+  getParaleloPerformance: async (paraleloId, period = 'week') => {
+    try {
+      const response = await api.get(`/teacher/paralelo/${paraleloId}/performance?period=${period}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener desempeno:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
   }
 };
 

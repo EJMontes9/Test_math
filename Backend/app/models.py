@@ -319,3 +319,75 @@ class ChallengeParticipant(Base):
     # Relationships
     challenge = relationship("Challenge", back_populates="participants")
     student = relationship("User")
+
+
+# Categorias de insignias
+class BadgeCategory(str, enum.Enum):
+    achievement = "achievement"  # Logros generales
+    streak = "streak"  # Rachas
+    mastery = "mastery"  # Dominio de temas
+    social = "social"  # Interaccion social
+    special = "special"  # Eventos especiales
+
+
+# Insignias
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    icon = Column(String, nullable=True)  # Nombre del icono o URL
+    category = Column(SQLEnum(BadgeCategory), default=BadgeCategory.achievement)
+    requirement = Column(String, nullable=True)  # Descripcion del requisito
+    requirement_value = Column(Integer, default=0)  # Valor numerico del requisito
+    points = Column(Integer, default=10)  # Puntos que otorga
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    student_badges = relationship("StudentBadge", back_populates="badge", cascade="all, delete-orphan")
+
+
+# Insignias de estudiantes
+class StudentBadge(Base):
+    __tablename__ = "student_badges"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    badge_id = Column(UUID(as_uuid=True), ForeignKey("badges.id"), nullable=False)
+    student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    is_equipped = Column(Boolean, default=False)  # Si esta equipada como principal
+    earned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    badge = relationship("Badge", back_populates="student_badges")
+    student = relationship("User")
+
+
+# Tipos de recursos
+class ResourceType(str, enum.Enum):
+    pdf = "pdf"
+    video = "video"
+    link = "link"
+
+
+# Recursos educativos
+class Resource(Base):
+    __tablename__ = "resources"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)  # Null = todos
+    title = Column(String, nullable=False)
+    description = Column(Text, nullable=True)
+    url = Column(String, nullable=False)
+    resource_type = Column(SQLEnum(ResourceType), default=ResourceType.link)
+    topic = Column(SQLEnum(MathTopic), nullable=True)  # Null = general
+    view_count = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    teacher = relationship("User")
+    paralelo = relationship("Paralelo")

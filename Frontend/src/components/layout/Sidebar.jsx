@@ -14,7 +14,11 @@ import {
   Trophy,
   Target,
   Swords,
-  UserCircle
+  UserCircle,
+  Award,
+  FileText,
+  BarChart3,
+  Download
 } from 'lucide-react';
 import authService from '../../services/authService';
 import { useSettings } from '../../context/SettingsContext';
@@ -88,6 +92,24 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       label: 'Ranking',
       role: ['teacher']
     },
+    {
+      path: '/teacher/resources',
+      icon: FileText,
+      label: 'Recursos',
+      role: ['teacher']
+    },
+    {
+      path: '/teacher/performance',
+      icon: BarChart3,
+      label: 'Desempeno',
+      role: ['teacher']
+    },
+    {
+      path: '/teacher/reports',
+      icon: Download,
+      label: 'Reportes',
+      role: ['teacher']
+    },
 
     // Student menu
     {
@@ -106,6 +128,30 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       path: '/student/ranking',
       icon: Users,
       label: 'Ranking',
+      role: ['student']
+    },
+    {
+      path: '/student/goals',
+      icon: Target,
+      label: 'Mis Metas',
+      role: ['student']
+    },
+    {
+      path: '/student/challenges',
+      icon: Swords,
+      label: 'Desafios',
+      role: ['student']
+    },
+    {
+      path: '/student/badges',
+      icon: Award,
+      label: 'Insignias',
+      role: ['student']
+    },
+    {
+      path: '/student/resources',
+      icon: FileText,
+      label: 'Recursos',
       role: ['student']
     },
   ].filter(item => item.role.includes(user?.role));
@@ -147,7 +193,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                 <div>
                   <h1 className="text-xl font-bold">{settings.app_name || 'MathMaster'}</h1>
                   <p className="text-xs text-white/70">
-                    {user?.role === 'admin' ? 'Admin Panel' : 'Panel Profesor'}
+                    {user?.role === 'admin' ? 'Admin Panel' : user?.role === 'teacher' ? 'Panel Profesor' : 'Panel Estudiante'}
                   </p>
                 </div>
               </div>

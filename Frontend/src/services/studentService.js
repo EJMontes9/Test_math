@@ -86,6 +86,105 @@ const studentService = {
       console.error('Error al obtener recomendaciones:', error);
       throw error.response?.data || { success: false, message: 'Error de conexión' };
     }
+  },
+
+  // ==================== DESAFIOS ====================
+
+  // Obtener desafíos
+  getChallenges: async (filter = 'available') => {
+    try {
+      const response = await api.get(`/student/challenges?filter=${filter}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener desafios:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Unirse a un desafío
+  joinChallenge: async (challengeId) => {
+    try {
+      const response = await api.post(`/student/challenges/${challengeId}/join`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al unirse al desafio:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Obtener ejercicio del desafío
+  getChallengeExercise: async (challengeId) => {
+    try {
+      const response = await api.get(`/student/challenges/${challengeId}/exercise`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener ejercicio del desafio:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Enviar respuesta del desafío
+  submitChallengeAnswer: async (challengeId, exerciseId, answer, timeTaken) => {
+    try {
+      const response = await api.post(`/student/challenges/${challengeId}/submit-answer`, {
+        exercise_id: exerciseId,
+        answer,
+        time_taken: timeTaken
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al enviar respuesta del desafio:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // ==================== METAS ====================
+
+  // Obtener metas del estudiante
+  getGoals: async (status = null) => {
+    try {
+      const url = status ? `/student/goals?status=${status}` : '/student/goals';
+      const response = await api.get(url);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener metas:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // ==================== INSIGNIAS ====================
+
+  // Obtener insignias del estudiante
+  getBadges: async () => {
+    try {
+      const response = await api.get('/student/badges');
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener insignias:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Equipar insignia
+  equipBadge: async (badgeId) => {
+    try {
+      const response = await api.post(`/student/badges/${badgeId}/equip`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al equipar insignia:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Desequipar insignia
+  unequipBadge: async (badgeId) => {
+    try {
+      const response = await api.post(`/student/badges/${badgeId}/unequip`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al desequipar insignia:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
   }
 };
 

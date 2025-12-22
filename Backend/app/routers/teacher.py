@@ -1,10 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, desc, or_
 from typing import Optional, List
 from uuid import UUID
 from datetime import datetime, timedelta
 from pydantic import BaseModel, Field
+from io import BytesIO
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
+from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from app.database import get_db
 from app.models import (
     User, Paralelo, Enrollment, Exercise, ExerciseAttempt, UserRole,
@@ -1049,3 +1057,592 @@ async def get_teacher_ranking(
         "stats": stats,
         "period": period
     })
+
+
+# ============= RESOURCES ENDPOINTS =============
+
+from app.models import Resource, ResourceType
+
+@router.get("/resources", response_model=APIResponse)
+async def get_teacher_resources(
+    topic: Optional[MathTopic] = None,
+    resource_type: Optional[ResourceType] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Obtener recursos del profesor"""
+    query = db.query(Resource).filter(
+        Resource.teacher_id == current_user.id,
+        Resource.is_active == True
+    )
+
+    if topic:
+        query = query.filter(Resource.topic == topic)
+    if resource_type:
+        query = query.filter(Resource.resource_type == resource_type)
+
+    resources = query.order_by(desc(Resource.created_at)).all()
+
+    resources_data = []
+    for resource in resources:
+        resources_data.append({
+            "id": str(resource.id),
+            "title": resource.title,
+            "description": resource.description,
+            "url": resource.url,
+            "resourceType": resource.resource_type.value,
+            "topic": resource.topic.value if resource.topic else None,
+            "viewCount": resource.view_count,
+            "paraleloId": str(resource.paralelo_id) if resource.paralelo_id else None,
+            "paraleloName": resource.paralelo.name if resource.paralelo else "Todos",
+            "createdAt": resource.created_at.isoformat()
+        })
+
+    return APIResponse(success=True, data=resources_data)
+
+
+@router.post("/resources", response_model=APIResponse)
+async def create_resource(
+    resource_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Crear un recurso"""
+    new_resource = Resource(
+        teacher_id=current_user.id,
+        title=resource_data.get("title"),
+        description=resource_data.get("description"),
+        url=resource_data.get("url"),
+        resource_type=ResourceType(resource_data.get("resourceType", "link")),
+        topic=MathTopic(resource_data.get("topic")) if resource_data.get("topic") else None,
+        paralelo_id=resource_data.get("paraleloId")
+    )
+    db.add(new_resource)
+    db.commit()
+
+    return APIResponse(success=True, message="Recurso creado", data={"id": str(new_resource.id)})
+
+
+@router.put("/resources/{resource_id}", response_model=APIResponse)
+async def update_resource(
+    resource_id: UUID,
+    resource_data: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Actualizar un recurso"""
+    resource = db.query(Resource).filter(
+        Resource.id == resource_id,
+        Resource.teacher_id == current_user.id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+
+    if "title" in resource_data:
+        resource.title = resource_data["title"]
+    if "description" in resource_data:
+        resource.description = resource_data["description"]
+    if "url" in resource_data:
+        resource.url = resource_data["url"]
+    if "resourceType" in resource_data:
+        resource.resource_type = ResourceType(resource_data["resourceType"])
+    if "topic" in resource_data:
+        resource.topic = MathTopic(resource_data["topic"]) if resource_data["topic"] else None
+
+    db.commit()
+
+    return APIResponse(success=True, message="Recurso actualizado")
+
+
+@router.delete("/resources/{resource_id}", response_model=APIResponse)
+async def delete_resource(
+    resource_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Eliminar un recurso"""
+    resource = db.query(Resource).filter(
+        Resource.id == resource_id,
+        Resource.teacher_id == current_user.id
+    ).first()
+
+    if not resource:
+        raise HTTPException(status_code=404, detail="Recurso no encontrado")
+
+    resource.is_active = False
+    db.commit()
+
+    return APIResponse(success=True, message="Recurso eliminado")
+
+
+# ============= PERFORMANCE ENDPOINT =============
+
+@router.get("/paralelo/{paralelo_id}/performance", response_model=APIResponse)
+async def get_paralelo_performance(
+    paralelo_id: UUID,
+    period: str = "week",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Obtener estadisticas de desempeno de un paralelo"""
+    # Verificar paralelo
+    paralelo = db.query(Paralelo).filter(
+        Paralelo.id == paralelo_id,
+        Paralelo.teacher_id == current_user.id
+    ).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    # Obtener estudiantes
+    enrollments = db.query(Enrollment).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).all()
+
+    student_ids = [e.student_id for e in enrollments]
+
+    # Filtro de tiempo
+    if period == "week":
+        time_filter = datetime.now() - timedelta(days=7)
+    elif period == "month":
+        time_filter = datetime.now() - timedelta(days=30)
+    else:
+        time_filter = None
+
+    # Estadisticas generales
+    sessions_query = db.query(GameSession).filter(
+        GameSession.student_id.in_(student_ids),
+        GameSession.paralelo_id == paralelo_id
+    )
+    if time_filter:
+        sessions_query = sessions_query.filter(GameSession.started_at >= time_filter)
+
+    sessions = sessions_query.all()
+
+    total_exercises = sum(s.exercises_completed for s in sessions)
+    total_correct = sum(s.correct_answers for s in sessions)
+    total_wrong = sum(s.wrong_answers for s in sessions)
+    average_accuracy = (total_correct / (total_correct + total_wrong) * 100) if (total_correct + total_wrong) > 0 else 0
+    average_score = sum(s.total_score for s in sessions) / len(student_ids) if student_ids else 0
+
+    # Estudiantes activos (con sesiones en el periodo)
+    active_student_ids = set(s.student_id for s in sessions)
+
+    # Desempeno por tema
+    topic_stats = {}
+    attempts_query = db.query(ExerciseAttempt).filter(
+        ExerciseAttempt.student_id.in_(student_ids)
+    )
+    if time_filter:
+        attempts_query = attempts_query.filter(ExerciseAttempt.attempted_at >= time_filter)
+
+    attempts = attempts_query.all()
+    for attempt in attempts:
+        exercise = db.query(Exercise).filter(Exercise.id == attempt.exercise_id).first()
+        if exercise and exercise.topic:
+            topic = exercise.topic.value
+            if topic not in topic_stats:
+                topic_stats[topic] = {"correct": 0, "total": 0}
+            topic_stats[topic]["total"] += 1
+            if attempt.is_correct:
+                topic_stats[topic]["correct"] += 1
+
+    topic_performance = []
+    for topic, stats in topic_stats.items():
+        accuracy = (stats["correct"] / stats["total"] * 100) if stats["total"] > 0 else 0
+        topic_performance.append({
+            "topic": topic,
+            "accuracy": round(accuracy, 1),
+            "attempts": stats["total"]
+        })
+    topic_performance.sort(key=lambda x: x["attempts"], reverse=True)
+
+    # Top estudiantes
+    top_students = []
+    for student_id in student_ids:
+        student = db.query(User).filter(User.id == student_id).first()
+        student_sessions = [s for s in sessions if s.student_id == student_id]
+        total_score = sum(s.total_score for s in student_sessions)
+        correct = sum(s.correct_answers for s in student_sessions)
+        wrong = sum(s.wrong_answers for s in student_sessions)
+        accuracy = (correct / (correct + wrong) * 100) if (correct + wrong) > 0 else 0
+        top_students.append({
+            "name": f"{student.first_name} {student.last_name}",
+            "score": total_score,
+            "accuracy": round(accuracy, 1)
+        })
+    top_students.sort(key=lambda x: x["score"], reverse=True)
+
+    # Estudiantes que necesitan ayuda (accuracy < 60%)
+    needs_help = [s for s in top_students if s["accuracy"] < 60]
+
+    # Actividad semanal
+    weekly_progress = []
+    days = ["Lun", "Mar", "Mie", "Jue", "Vie", "Sab", "Dom"]
+    today = datetime.now()
+    for i in range(7):
+        day = today - timedelta(days=6-i)
+        day_sessions = [s for s in sessions if s.started_at.date() == day.date()]
+        exercises = sum(s.exercises_completed for s in day_sessions)
+        weekly_progress.append({
+            "day": days[day.weekday()],
+            "exercises": exercises
+        })
+
+    return APIResponse(success=True, data={
+        "general": {
+            "totalStudents": len(student_ids),
+            "activeStudents": len(active_student_ids),
+            "totalExercises": total_exercises,
+            "averageAccuracy": round(average_accuracy, 1),
+            "averageScore": round(average_score, 1),
+            "trend": "up" if average_accuracy > 50 else "down"
+        },
+        "topicPerformance": topic_performance[:5],
+        "topStudents": top_students[:3],
+        "needsHelp": needs_help[:3],
+        "weeklyProgress": weekly_progress
+    })
+
+
+# ============= REPORTES PDF =============
+
+def generate_pdf_report(title: str, teacher_name: str, paralelo_name: str, students_data: list, summary: dict):
+    """Genera un PDF con el reporte de estudiantes"""
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    elements = []
+    styles = getSampleStyleSheet()
+
+    # Estilos personalizados
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        alignment=TA_CENTER,
+        spaceAfter=20,
+        textColor=colors.HexColor('#4F46E5')
+    )
+
+    subtitle_style = ParagraphStyle(
+        'CustomSubtitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        alignment=TA_CENTER,
+        spaceAfter=10,
+        textColor=colors.HexColor('#6B7280')
+    )
+
+    section_style = ParagraphStyle(
+        'SectionTitle',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceBefore=20,
+        spaceAfter=10,
+        textColor=colors.HexColor('#1F2937')
+    )
+
+    # Titulo principal
+    elements.append(Paragraph("MathMaster - Reporte de Estudiantes", title_style))
+    elements.append(Paragraph(f"Paralelo: {paralelo_name}", subtitle_style))
+    elements.append(Paragraph(f"Profesor: {teacher_name}", subtitle_style))
+    elements.append(Paragraph(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style))
+    elements.append(Spacer(1, 20))
+
+    # Resumen general
+    elements.append(Paragraph("Resumen General", section_style))
+    summary_data = [
+        ["Total Estudiantes", str(summary.get('total_students', 0))],
+        ["Estudiantes Activos", str(summary.get('active_students', 0))],
+        ["Ejercicios Completados", str(summary.get('total_exercises', 0))],
+        ["Precision Promedio", f"{summary.get('average_accuracy', 0):.1f}%"],
+        ["Puntaje Promedio", str(int(summary.get('average_score', 0)))]
+    ]
+
+    summary_table = Table(summary_data, colWidths=[200, 150])
+    summary_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (0, -1), colors.HexColor('#F3F4F6')),
+        ('TEXTCOLOR', (0, 0), (-1, -1), colors.HexColor('#1F2937')),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB'))
+    ]))
+    elements.append(summary_table)
+    elements.append(Spacer(1, 20))
+
+    # Tabla de estudiantes
+    elements.append(Paragraph("Detalle por Estudiante", section_style))
+
+    # Encabezados
+    table_data = [["#", "Nombre", "Ejercicios", "Correctos", "Precision", "Puntaje", "Nivel"]]
+
+    # Datos de estudiantes
+    for i, student in enumerate(students_data, 1):
+        precision = f"{student.get('accuracy', 0):.1f}%"
+        nivel = "Avanzado" if student.get('accuracy', 0) >= 80 else "Intermedio" if student.get('accuracy', 0) >= 60 else "Basico"
+        table_data.append([
+            str(i),
+            student.get('name', 'N/A'),
+            str(student.get('exercises', 0)),
+            str(student.get('correct', 0)),
+            precision,
+            str(student.get('score', 0)),
+            nivel
+        ])
+
+    # Crear tabla
+    col_widths = [30, 140, 70, 70, 70, 60, 70]
+    student_table = Table(table_data, colWidths=col_widths)
+
+    # Estilo de tabla
+    table_style = TableStyle([
+        # Encabezado
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4F46E5')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 10),
+        ('TOPPADDING', (0, 0), (-1, 0), 10),
+        # Cuerpo
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.HexColor('#1F2937')),
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),
+        ('ALIGN', (2, 1), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+        ('TOPPADDING', (0, 1), (-1, -1), 6),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E5E7EB')),
+    ])
+
+    # Alternar colores de filas
+    for i in range(1, len(table_data)):
+        if i % 2 == 0:
+            table_style.add('BACKGROUND', (0, i), (-1, i), colors.HexColor('#F9FAFB'))
+
+    student_table.setStyle(table_style)
+    elements.append(student_table)
+
+    # Pie de pagina
+    elements.append(Spacer(1, 30))
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=styles['Normal'],
+        fontSize=9,
+        alignment=TA_CENTER,
+        textColor=colors.HexColor('#9CA3AF')
+    )
+    elements.append(Paragraph("Generado automaticamente por MathMaster", footer_style))
+
+    # Construir PDF
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+
+@router.get("/reports/paralelo/{paralelo_id}/pdf")
+async def generate_paralelo_report_pdf(
+    paralelo_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Generar reporte PDF de un paralelo con todos los estudiantes"""
+    # Verificar paralelo
+    paralelo = db.query(Paralelo).filter(
+        Paralelo.id == paralelo_id,
+        Paralelo.teacher_id == current_user.id
+    ).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    # Obtener estudiantes
+    enrollments = db.query(Enrollment).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).all()
+
+    students_data = []
+    total_exercises = 0
+    total_correct = 0
+    total_wrong = 0
+    total_score = 0
+    active_count = 0
+
+    for enrollment in enrollments:
+        student = db.query(User).filter(User.id == enrollment.student_id).first()
+        if not student:
+            continue
+
+        # Obtener sesiones del estudiante
+        sessions = db.query(GameSession).filter(
+            GameSession.student_id == student.id,
+            GameSession.paralelo_id == paralelo_id
+        ).all()
+
+        exercises = sum(s.exercises_completed for s in sessions)
+        correct = sum(s.correct_answers for s in sessions)
+        wrong = sum(s.wrong_answers for s in sessions)
+        score = sum(s.total_score for s in sessions)
+        accuracy = (correct / (correct + wrong) * 100) if (correct + wrong) > 0 else 0
+
+        if exercises > 0:
+            active_count += 1
+
+        total_exercises += exercises
+        total_correct += correct
+        total_wrong += wrong
+        total_score += score
+
+        students_data.append({
+            'name': f"{student.first_name} {student.last_name}",
+            'exercises': exercises,
+            'correct': correct,
+            'wrong': wrong,
+            'accuracy': accuracy,
+            'score': score
+        })
+
+    # Ordenar por puntaje
+    students_data.sort(key=lambda x: x['score'], reverse=True)
+
+    # Resumen
+    avg_accuracy = (total_correct / (total_correct + total_wrong) * 100) if (total_correct + total_wrong) > 0 else 0
+    avg_score = total_score / len(enrollments) if enrollments else 0
+
+    summary = {
+        'total_students': len(enrollments),
+        'active_students': active_count,
+        'total_exercises': total_exercises,
+        'average_accuracy': avg_accuracy,
+        'average_score': avg_score
+    }
+
+    # Generar PDF
+    teacher_name = f"{current_user.first_name} {current_user.last_name}"
+    pdf_buffer = generate_pdf_report(
+        title="Reporte de Paralelo",
+        teacher_name=teacher_name,
+        paralelo_name=paralelo.name,
+        students_data=students_data,
+        summary=summary
+    )
+
+    # Nombre del archivo
+    filename = f"reporte_{paralelo.name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/reports/student/{student_id}/pdf")
+async def generate_student_report_pdf(
+    student_id: UUID,
+    paralelo_id: Optional[UUID] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Generar reporte PDF de un estudiante individual"""
+    # Verificar que el estudiante pertenece a un paralelo del profesor
+    student = db.query(User).filter(User.id == student_id).first()
+    if not student:
+        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
+
+    # Verificar permisos
+    enrollment = db.query(Enrollment).join(Paralelo).filter(
+        Enrollment.student_id == student_id,
+        Enrollment.is_active == True,
+        Paralelo.teacher_id == current_user.id
+    ).first()
+
+    if not enrollment:
+        raise HTTPException(status_code=403, detail="No tienes permiso para ver este estudiante")
+
+    paralelo = db.query(Paralelo).filter(Paralelo.id == enrollment.paralelo_id).first()
+
+    # Obtener sesiones
+    sessions = db.query(GameSession).filter(
+        GameSession.student_id == student_id,
+        GameSession.paralelo_id == enrollment.paralelo_id
+    ).all()
+
+    exercises = sum(s.exercises_completed for s in sessions)
+    correct = sum(s.correct_answers for s in sessions)
+    wrong = sum(s.wrong_answers for s in sessions)
+    score = sum(s.total_score for s in sessions)
+    accuracy = (correct / (correct + wrong) * 100) if (correct + wrong) > 0 else 0
+
+    # Datos del estudiante
+    students_data = [{
+        'name': f"{student.first_name} {student.last_name}",
+        'exercises': exercises,
+        'correct': correct,
+        'wrong': wrong,
+        'accuracy': accuracy,
+        'score': score
+    }]
+
+    summary = {
+        'total_students': 1,
+        'active_students': 1 if exercises > 0 else 0,
+        'total_exercises': exercises,
+        'average_accuracy': accuracy,
+        'average_score': score
+    }
+
+    # Generar PDF
+    teacher_name = f"{current_user.first_name} {current_user.last_name}"
+    pdf_buffer = generate_pdf_report(
+        title=f"Reporte Individual - {student.first_name} {student.last_name}",
+        teacher_name=teacher_name,
+        paralelo_name=paralelo.name if paralelo else "N/A",
+        students_data=students_data,
+        summary=summary
+    )
+
+    filename = f"reporte_{student.first_name}_{student.last_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+    return StreamingResponse(
+        pdf_buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@router.get("/reports/available", response_model=APIResponse)
+async def get_available_reports(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Obtener lista de reportes disponibles para el profesor"""
+    # Obtener paralelos del profesor
+    paralelos = db.query(Paralelo).filter(
+        Paralelo.teacher_id == current_user.id,
+        Paralelo.is_active == True
+    ).all()
+
+    reports = []
+    for paralelo in paralelos:
+        # Contar estudiantes
+        student_count = db.query(Enrollment).filter(
+            Enrollment.paralelo_id == paralelo.id,
+            Enrollment.is_active == True
+        ).count()
+
+        reports.append({
+            'id': str(paralelo.id),
+            'name': paralelo.name,
+            'type': 'paralelo',
+            'studentCount': student_count,
+            'description': f"Reporte completo del paralelo {paralelo.name}"
+        })
+
+    return APIResponse(success=True, data=reports)
