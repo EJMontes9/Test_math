@@ -138,7 +138,7 @@ export default function Reports() {
             <h2 className="text-xl font-bold mb-2">Reportes de Estudiantes</h2>
             <p className="text-white/80">
               Los reportes incluyen informacion detallada de cada estudiante: nombre, ejercicios completados,
-              respuestas correctas, precision, puntaje total y nivel de desempeno.
+              respuestas correctas, precision, puntaje total y nivel de desempeño.
             </p>
           </div>
         </div>

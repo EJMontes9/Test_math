@@ -104,7 +104,7 @@ export default function Performance() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Desempeno del Paralelo</h1>
+          <h1 className="text-2xl font-bold text-gray-800">Desempeño del Paralelo</h1>
           <p className="text-gray-500">Analiza el progreso de tus estudiantes</p>
         </div>
         <div className="flex gap-3">
@@ -211,7 +211,7 @@ export default function Performance() {
             >
               <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-indigo-600" />
-                Desempeno por Tema
+                Desempeño por Tema
               </h3>
               <div className="space-y-4">
                 {stats.topicPerformance.map((topic, index) => (

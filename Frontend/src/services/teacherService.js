@@ -216,7 +216,7 @@ const teacherService = {
       const response = await api.get(`/teacher/paralelo/${paraleloId}/performance?period=${period}`);
       return response.data;
     } catch (error) {
-      console.error('Error al obtener desempeno:', error);
+      console.error('Error al obtener desempeño:', error);
       throw error.response?.data || { success: false, message: 'Error de conexión' };
     }
   }

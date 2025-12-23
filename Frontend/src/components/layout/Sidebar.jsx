@@ -101,7 +101,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
     {
       path: '/teacher/performance',
       icon: BarChart3,
-      label: 'Desempeno',
+      label: 'Desempeño',
       role: ['teacher']
     },
     {
