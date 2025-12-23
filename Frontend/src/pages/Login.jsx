@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator, Lock, Mail, LogIn, Brain, Plus, Minus, X, Divide, AlertCircle, CheckCircle, Settings, Globe } from 'lucide-react';
+import { Calculator, Lock, Mail, LogIn, Plus, Minus, X, Divide, AlertCircle, CheckCircle, Settings, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 import { setApiUrl, getConfiguredApiUrl } from '../services/api';
+import logoImg from '../assets/logo.PNG';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -119,7 +120,7 @@ const Login = () => {
     { Icon: X, delay: 0.3, duration: 3.6, top: '60%', left: '88%' },
     { Icon: Divide, delay: 1.8, duration: 3.4, top: '85%', left: '20%' },
     { Icon: Calculator, delay: 0.6, duration: 4.2, top: '15%', left: '75%' },
-    { Icon: Brain, delay: 1.4, duration: 3.9, top: '75%', left: '50%' },
+    { Icon: Calculator, delay: 1.4, duration: 3.9, top: '75%', left: '50%' },
   ];
 
   return (
@@ -235,9 +236,9 @@ const Login = () => {
                   repeat: Infinity,
                   ease: "easeInOut",
                 }}
-                className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg"
+                className="w-24 h-24 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden"
               >
-                <Brain className="w-10 h-10 text-white" />
+                <img src={logoImg} alt="MathMaster Logo" className="w-full h-full object-contain" />
               </motion.div>
               <motion.div
                 animate={{
@@ -398,7 +399,7 @@ const Login = () => {
                 </p>
               </div>
               <div className="flex-1 bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg p-3 text-center border border-purple-200">
-                <Brain className="w-6 h-6 mx-auto text-purple-600 mb-1" />
+                <X className="w-6 h-6 mx-auto text-purple-600 mb-1" />
                 <p className="text-xs font-medium text-purple-800">
                   Ecuaciones
                 </p>

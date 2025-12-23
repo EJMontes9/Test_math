@@ -8,7 +8,6 @@ import {
   LogOut,
   Menu,
   X,
-  Brain,
   Settings,
   ChevronRight,
   Trophy,
@@ -22,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import logoImg from '../../assets/logo.PNG';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const location = useLocation();
@@ -187,8 +187,8 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
           <div className="p-6 border-b border-white/20">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-lg">
-                  <Brain className="w-7 h-7 text-white" />
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden bg-white">
+                  <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
                   <h1 className="text-xl font-bold">{settings.app_name || 'MathMaster'}</h1>
