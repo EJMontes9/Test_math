@@ -1,9 +1,10 @@
 import { motion } from 'framer-motion';
-import { Plus, Edit, Trash2, Users, BookOpen, RefreshCw, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, BookOpen, RefreshCw, Search, UserPlus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import paraleloService from '../../services/paraleloService';
 import ParaleloModal from '../../components/modals/ParaleloModal';
 import ConfirmModal from '../../components/modals/ConfirmModal';
+import ManageStudentsModal from '../../components/modals/ManageStudentsModal';
 
 const Paralelos = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -13,8 +14,10 @@ const Paralelos = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isStudentsModalOpen, setIsStudentsModalOpen] = useState(false);
   const [selectedParalelo, setSelectedParalelo] = useState(null);
   const [paraleloToDelete, setParaleloToDelete] = useState(null);
+  const [paraleloForStudents, setParaleloForStudents] = useState(null);
   const [error, setError] = useState('');
 
   // Cargar paralelos y estadísticas
@@ -100,6 +103,11 @@ const Paralelos = () => {
       console.error('Error al eliminar paralelo:', err);
       setError('Error al eliminar paralelo');
     }
+  };
+
+  const handleManageStudents = (paralelo) => {
+    setParaleloForStudents(paralelo);
+    setIsStudentsModalOpen(true);
   };
 
   return (
@@ -291,6 +299,15 @@ const Paralelos = () => {
                 </div>
               </div>
 
+              {/* Manage Students Button */}
+              <button
+                onClick={() => handleManageStudents(paralelo)}
+                className="w-full mb-4 bg-gradient-to-r from-purple-500 to-indigo-600 text-white py-2 px-4 rounded-lg hover:shadow-lg transition-all text-sm font-medium flex items-center justify-center space-x-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>Gestionar Estudiantes</span>
+              </button>
+
               {/* Actions */}
               <div className="flex space-x-2 pt-4 border-t border-gray-100">
                 <button
@@ -327,6 +344,16 @@ const Paralelos = () => {
         onConfirm={handleConfirmDelete}
         title="Eliminar Paralelo"
         message={`¿Estás seguro de que deseas eliminar el paralelo "${paraleloToDelete?.name}"? Esta acción desactivará el paralelo.`}
+      />
+
+      <ManageStudentsModal
+        isOpen={isStudentsModalOpen}
+        onClose={() => {
+          setIsStudentsModalOpen(false);
+          setParaleloForStudents(null);
+        }}
+        paralelo={paraleloForStudents}
+        onUpdate={loadData}
       />
     </div>
   );

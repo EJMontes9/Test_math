@@ -1,14 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func, or_
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
+from pydantic import BaseModel
 from app.database import get_db
-from app.models import Paralelo, User
+from app.models import Paralelo, User, Enrollment, UserRole
 from app.schemas import ParaleloCreate, ParaleloUpdate, APIResponse
 from app.auth import require_admin
 
 router = APIRouter(prefix="/api/paralelos", tags=["Paralelos"])
+
+
+# Schema para asignar estudiantes
+class AssignStudentsRequest(BaseModel):
+    student_ids: List[UUID]
 
 
 @router.get("/", response_model=APIResponse)
@@ -192,4 +198,180 @@ async def delete_paralelo(
     return APIResponse(
         success=True,
         message="Paralelo eliminado exitosamente"
+    )
+
+
+# ============= Gestión de Estudiantes del Paralelo =============
+
+@router.get("/{paralelo_id}/students", response_model=APIResponse)
+async def get_paralelo_students(
+    paralelo_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Obtener todos los estudiantes de un paralelo"""
+    paralelo = db.query(Paralelo).filter(Paralelo.id == paralelo_id).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    # Obtener enrollments activos
+    enrollments = db.query(Enrollment).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).all()
+
+    students_data = []
+    for enrollment in enrollments:
+        student = enrollment.student
+        students_data.append({
+            "id": str(student.id),
+            "email": student.email,
+            "firstName": student.first_name,
+            "lastName": student.last_name,
+            "isActive": student.is_active,
+            "enrolledAt": enrollment.enrolled_at.isoformat() if enrollment.enrolled_at else None
+        })
+
+    return APIResponse(success=True, data=students_data)
+
+
+@router.get("/{paralelo_id}/available-students", response_model=APIResponse)
+async def get_available_students(
+    paralelo_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Obtener estudiantes disponibles (no asignados a este paralelo)"""
+    paralelo = db.query(Paralelo).filter(Paralelo.id == paralelo_id).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    # Obtener IDs de estudiantes ya inscritos en este paralelo
+    enrolled_student_ids = db.query(Enrollment.student_id).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).all()
+    enrolled_ids = [str(e[0]) for e in enrolled_student_ids]
+
+    # Obtener todos los estudiantes activos que no están en este paralelo
+    students = db.query(User).filter(
+        User.role == UserRole.student,
+        User.is_active == True,
+        ~User.id.in_([UUID(id) for id in enrolled_ids]) if enrolled_ids else True
+    ).all()
+
+    students_data = []
+    for student in students:
+        students_data.append({
+            "id": str(student.id),
+            "email": student.email,
+            "firstName": student.first_name,
+            "lastName": student.last_name
+        })
+
+    return APIResponse(success=True, data=students_data)
+
+
+@router.post("/{paralelo_id}/students", response_model=APIResponse)
+async def assign_students_to_paralelo(
+    paralelo_id: UUID,
+    request: AssignStudentsRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Asignar estudiantes a un paralelo"""
+    paralelo = db.query(Paralelo).filter(Paralelo.id == paralelo_id).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    added_count = 0
+    for student_id in request.student_ids:
+        # Verificar que el estudiante existe y es un estudiante
+        student = db.query(User).filter(
+            User.id == student_id,
+            User.role == UserRole.student,
+            User.is_active == True
+        ).first()
+
+        if not student:
+            continue
+
+        # Verificar si ya existe un enrollment (activo o inactivo)
+        existing_enrollment = db.query(Enrollment).filter(
+            Enrollment.student_id == student_id,
+            Enrollment.paralelo_id == paralelo_id
+        ).first()
+
+        if existing_enrollment:
+            # Reactivar si estaba inactivo
+            if not existing_enrollment.is_active:
+                existing_enrollment.is_active = True
+                added_count += 1
+        else:
+            # Crear nuevo enrollment
+            new_enrollment = Enrollment(
+                student_id=student_id,
+                paralelo_id=paralelo_id,
+                is_active=True
+            )
+            db.add(new_enrollment)
+            added_count += 1
+
+    # Actualizar contador de estudiantes del paralelo
+    student_count = db.query(func.count(Enrollment.id)).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).scalar()
+    paralelo.student_count = student_count
+
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        message=f"{added_count} estudiante(s) agregado(s) al paralelo",
+        data={"addedCount": added_count, "totalStudents": student_count}
+    )
+
+
+@router.delete("/{paralelo_id}/students/{student_id}", response_model=APIResponse)
+async def remove_student_from_paralelo(
+    paralelo_id: UUID,
+    student_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Remover un estudiante de un paralelo"""
+    paralelo = db.query(Paralelo).filter(Paralelo.id == paralelo_id).first()
+
+    if not paralelo:
+        raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == student_id,
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).first()
+
+    if not enrollment:
+        raise HTTPException(status_code=404, detail="El estudiante no está inscrito en este paralelo")
+
+    # Desactivar enrollment
+    enrollment.is_active = False
+
+    # Actualizar contador de estudiantes del paralelo
+    student_count = db.query(func.count(Enrollment.id)).filter(
+        Enrollment.paralelo_id == paralelo_id,
+        Enrollment.is_active == True
+    ).scalar() - 1  # -1 porque aún no se ha commitado
+    paralelo.student_count = max(0, student_count)
+
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        message="Estudiante removido del paralelo",
+        data={"totalStudents": paralelo.student_count}
     )

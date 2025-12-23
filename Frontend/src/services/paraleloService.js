@@ -70,6 +70,52 @@ const paraleloService = {
       console.error('Error al obtener estadísticas:', error);
       throw error.response?.data || { success: false, message: 'Error de conexión' };
     }
+  },
+
+  // Obtener estudiantes de un paralelo
+  getParaleloStudents: async (paraleloId) => {
+    try {
+      const response = await api.get(`/paralelos/${paraleloId}/students`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener estudiantes del paralelo:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Obtener estudiantes disponibles para asignar a un paralelo
+  getAvailableStudents: async (paraleloId) => {
+    try {
+      const response = await api.get(`/paralelos/${paraleloId}/available-students`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener estudiantes disponibles:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Asignar estudiantes a un paralelo
+  assignStudents: async (paraleloId, studentIds) => {
+    try {
+      const response = await api.post(`/paralelos/${paraleloId}/students`, {
+        student_ids: studentIds
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al asignar estudiantes:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
+  // Remover un estudiante de un paralelo
+  removeStudent: async (paraleloId, studentId) => {
+    try {
+      const response = await api.delete(`/paralelos/${paraleloId}/students/${studentId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error al remover estudiante:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
   }
 };
 
