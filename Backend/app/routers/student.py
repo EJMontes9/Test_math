@@ -1009,41 +1009,65 @@ async def get_student_goals(
 
 # ==================== ENDPOINTS DE INSIGNIAS ====================
 
-@router.get("/badges", response_model=APIResponse)
-async def get_student_badges(
+@router.get("/badges/all", response_model=APIResponse)
+async def get_all_badges(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_student)
 ):
-    """Obtener insignias del estudiante"""
-    from app.models import Badge, StudentBadge
+    """Obtener todas las insignias disponibles"""
+    from app.models import Badge
 
     # Obtener todas las insignias activas
     badges = db.query(Badge).filter(Badge.is_active == True).all()
 
     badges_data = []
     for badge in badges:
-        # Verificar si el estudiante tiene esta insignia
-        student_badge = db.query(StudentBadge).filter(
-            StudentBadge.badge_id == badge.id,
-            StudentBadge.student_id == current_user.id
-        ).first()
-
         badges_data.append({
             "id": str(badge.id),
             "name": badge.name,
             "description": badge.description,
             "icon": badge.icon,
             "category": badge.category.value if badge.category else "general",
+            "rarity": "common",  # Por defecto
             "requirement": badge.requirement,
             "requirementValue": badge.requirement_value,
-            "points": badge.points,
-            "owned": student_badge is not None,
-            "equipped": student_badge.is_equipped if student_badge else False,
-            "earnedAt": student_badge.earned_at.isoformat() if student_badge else None
+            "points": badge.points
         })
 
-    # Ordenar: primero las que tiene, luego por categoria
-    badges_data.sort(key=lambda x: (not x["owned"], x["category"]))
+    return APIResponse(success=True, data=badges_data)
+
+
+@router.get("/badges", response_model=APIResponse)
+async def get_student_badges(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Obtener solo las insignias que el estudiante ha desbloqueado"""
+    from app.models import Badge, StudentBadge
+
+    # Obtener las insignias que el estudiante tiene
+    student_badges = db.query(StudentBadge).filter(
+        StudentBadge.student_id == current_user.id
+    ).all()
+
+    badges_data = []
+    for student_badge in student_badges:
+        badge = student_badge.badge
+        if badge and badge.is_active:
+            badges_data.append({
+                "id": str(student_badge.id),
+                "badgeId": str(badge.id),
+                "name": badge.name,
+                "description": badge.description,
+                "icon": badge.icon,
+                "category": badge.category.value if badge.category else "general",
+                "rarity": "common",  # Por defecto
+                "requirement": badge.requirement,
+                "requirementValue": badge.requirement_value,
+                "points": badge.points,
+                "isEquipped": student_badge.is_equipped,
+                "earnedAt": student_badge.earned_at.isoformat() if student_badge.earned_at else None
+            })
 
     return APIResponse(success=True, data=badges_data)
 
@@ -1085,7 +1109,7 @@ async def unequip_badge(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_student)
 ):
-    """Desequipar una insignia"""
+    """Desequipar una insignia especifica"""
     from app.models import StudentBadge
 
     student_badge = db.query(StudentBadge).filter(
@@ -1100,6 +1124,95 @@ async def unequip_badge(
     db.commit()
 
     return APIResponse(success=True, message="Insignia desequipada")
+
+
+@router.post("/badges/unequip", response_model=APIResponse)
+async def unequip_all_badges(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Desequipar la insignia equipada actualmente"""
+    from app.models import StudentBadge
+
+    db.query(StudentBadge).filter(
+        StudentBadge.student_id == current_user.id,
+        StudentBadge.is_equipped == True
+    ).update({"is_equipped": False})
+
+    db.commit()
+
+    return APIResponse(success=True, message="Insignia desequipada")
+
+
+@router.post("/badges/check", response_model=APIResponse)
+async def check_achievements(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Verificar y otorgar insignias pendientes basadas en el progreso del estudiante"""
+    from app.models import Badge, StudentBadge, GameSession
+
+    new_badges = []
+
+    # Obtener todas las insignias activas que el estudiante NO tiene
+    existing_badge_ids = db.query(StudentBadge.badge_id).filter(
+        StudentBadge.student_id == current_user.id
+    ).all()
+    existing_ids = [str(b[0]) for b in existing_badge_ids]
+
+    available_badges = db.query(Badge).filter(
+        Badge.is_active == True,
+        ~Badge.id.in_([UUID(id) for id in existing_ids]) if existing_ids else True
+    ).all()
+
+    # Obtener estadisticas del estudiante
+    total_sessions = db.query(func.count(GameSession.id)).filter(
+        GameSession.student_id == current_user.id
+    ).scalar() or 0
+
+    total_correct = db.query(func.sum(GameSession.correct_answers)).filter(
+        GameSession.student_id == current_user.id
+    ).scalar() or 0
+
+    total_exercises = db.query(func.sum(GameSession.total_questions)).filter(
+        GameSession.student_id == current_user.id
+    ).scalar() or 0
+
+    # Verificar cada insignia
+    for badge in available_badges:
+        earned = False
+        requirement = badge.requirement
+        value = badge.requirement_value or 0
+
+        if requirement == "first_exercise" and total_exercises >= 1:
+            earned = True
+        elif requirement == "exercises_count" and total_exercises >= value:
+            earned = True
+        elif requirement == "correct_streak" and total_correct >= value:
+            earned = True
+        elif requirement == "sessions_count" and total_sessions >= value:
+            earned = True
+
+        if earned:
+            # Otorgar la insignia
+            new_student_badge = StudentBadge(
+                student_id=current_user.id,
+                badge_id=badge.id,
+                is_equipped=False
+            )
+            db.add(new_student_badge)
+            new_badges.append({
+                "id": str(badge.id),
+                "name": badge.name,
+                "description": badge.description,
+                "icon": badge.icon,
+                "rarity": "common"
+            })
+
+    if new_badges:
+        db.commit()
+
+    return APIResponse(success=True, data={"newBadges": new_badges})
 
 
 # ==================== ENDPOINTS DE RECURSOS ====================

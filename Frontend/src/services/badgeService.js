@@ -8,18 +8,9 @@ const badgeService = {
       return response.data;
     } catch (error) {
       console.error('Error al obtener insignias:', error);
-      // Datos mock para demo
       return {
-        success: true,
-        data: [
-          { id: 1, name: 'Primer Paso', description: 'Completa tu primer ejercicio', icon: '🎯', rarity: 'common' },
-          { id: 2, name: 'En Racha', description: 'Completa 5 ejercicios seguidos', icon: '🔥', rarity: 'common' },
-          { id: 3, name: 'Matematico', description: 'Resuelve 50 ejercicios', icon: '🧮', rarity: 'rare' },
-          { id: 4, name: 'Perfeccionista', description: '10 respuestas correctas seguidas', icon: '💎', rarity: 'rare' },
-          { id: 5, name: 'Maestro', description: 'Completa 200 ejercicios', icon: '🏆', rarity: 'epic' },
-          { id: 6, name: 'Velocista', description: 'Responde en menos de 5 segundos', icon: '⚡', rarity: 'epic' },
-          { id: 7, name: 'Leyenda', description: '100% precision en 50 ejercicios', icon: '👑', rarity: 'legendary' }
-        ]
+        success: false,
+        data: []
       };
     }
   },
@@ -31,13 +22,9 @@ const badgeService = {
       return response.data;
     } catch (error) {
       console.error('Error al obtener mis insignias:', error);
-      // Datos mock para demo
       return {
-        success: true,
-        data: [
-          { id: 1, badgeId: 1, name: 'Primer Paso', description: 'Completa tu primer ejercicio', icon: '🎯', rarity: 'common', isEquipped: false, earnedAt: new Date().toISOString() },
-          { id: 2, badgeId: 2, name: 'En Racha', description: 'Completa 5 ejercicios seguidos', icon: '🔥', rarity: 'common', isEquipped: true, earnedAt: new Date().toISOString() }
-        ]
+        success: false,
+        data: []
       };
     }
   },
