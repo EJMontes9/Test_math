@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -20,6 +20,60 @@ import {
 import studentService from '../../services/studentService';
 import Confetti from 'react-confetti';
 
+// Frases motivacionales para respuestas correctas
+const correctPhrases = [
+  "¡Brillante! Eres un genio de las matemáticas",
+  "¡Espectacular! Sigue así, campeón",
+  "¡Increíble! Tu cerebro está en llamas",
+  "¡Fantástico! Cada vez eres mejor",
+  "¡Wow! Eso fue impresionante",
+  "¡Excelente trabajo! Eres imparable",
+  "¡Genial! Las matemáticas son tu superpoder",
+  "¡Asombroso! Nadie te detiene",
+  "¡Perfecto! Estás dominando esto",
+  "¡Maravilloso! Tu esfuerzo vale la pena",
+  "¡Súper! Eres una estrella matemática",
+  "¡Fenomenal! Sigue brillando",
+  "¡Extraordinario! Tu mente es poderosa",
+  "¡Magnífico! El éxito es tuyo",
+  "¡Sensacional! Cada respuesta te hace más fuerte",
+  "¡Sobresaliente! Tu dedicación se nota",
+  "¡Fabuloso! Las matemáticas te aman",
+  "¡Impecable! Eres un crack",
+  "¡Tremendo! No hay quien te pare",
+  "¡Eres un máquina! Sigue adelante"
+];
+
+// Frases motivacionales para respuestas incorrectas
+const incorrectPhrases = [
+  "¡No te rindas! El próximo será tuyo",
+  "¡Tranquilo! De los errores se aprende",
+  "¡Ánimo! Cada intento te hace más fuerte",
+  "¡Sigue intentando! La práctica hace al maestro",
+  "¡No pasa nada! Tú puedes con esto",
+  "¡Vamos! El siguiente ejercicio es tu oportunidad",
+  "¡Arriba ese ánimo! Confío en ti",
+  "¡A seguir! Los campeones nunca se rinden",
+  "¡Fuerza! Estás más cerca de entenderlo",
+  "¡Adelante! Un tropiezo no es una caída",
+  "¡Respira y continúa! Tú eres capaz",
+  "¡No te desanimes! Roma no se construyó en un día",
+  "¡Persiste! El éxito está a la vuelta de la esquina",
+  "¡Mantén la calma! Lo vas a lograr",
+  "¡Eso es parte del aprendizaje! Sigue adelante",
+  "¡Piensa positivo! El próximo será correcto",
+  "¡No bajes los brazos! Eres más fuerte que esto",
+  "¡Confía en ti! Puedes hacerlo mejor",
+  "¡Es solo un obstáculo! Tú lo superarás",
+  "¡Levántate y brilla! El siguiente es tuyo"
+];
+
+// Función para obtener frase aleatoria
+const getRandomPhrase = (isCorrect) => {
+  const phrases = isCorrect ? correctPhrases : incorrectPhrases;
+  return phrases[Math.floor(Math.random() * phrases.length)];
+};
+
 export default function Game() {
   const navigate = useNavigate();
   const [gameState, setGameState] = useState('menu'); // menu, playing, result, gameOver
@@ -35,8 +89,44 @@ export default function Game() {
   const [timeLeft, setTimeLeft] = useState(60);
   const [showConfetti, setShowConfetti] = useState(false);
   const [lastResult, setLastResult] = useState(null);
+  const [motivationalPhrase, setMotivationalPhrase] = useState('');
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
+
+  // Bloquear copiar, pegar, cortar y menú contextual durante el juego
+  const preventCopyPaste = useCallback((e) => {
+    if (gameState === 'playing' || gameState === 'result') {
+      e.preventDefault();
+      return false;
+    }
+  }, [gameState]);
+
+  useEffect(() => {
+    // Solo bloquear cuando está en juego
+    if (gameState === 'playing' || gameState === 'result') {
+      document.addEventListener('copy', preventCopyPaste);
+      document.addEventListener('paste', preventCopyPaste);
+      document.addEventListener('cut', preventCopyPaste);
+      document.addEventListener('contextmenu', preventCopyPaste);
+
+      // Bloquear atajos de teclado
+      const handleKeyDown = (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'a')) {
+          e.preventDefault();
+          return false;
+        }
+      };
+      document.addEventListener('keydown', handleKeyDown);
+
+      return () => {
+        document.removeEventListener('copy', preventCopyPaste);
+        document.removeEventListener('paste', preventCopyPaste);
+        document.removeEventListener('cut', preventCopyPaste);
+        document.removeEventListener('contextmenu', preventCopyPaste);
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [gameState, preventCopyPaste]);
 
   useEffect(() => {
     if (gameState === 'playing' && timeLeft > 0) {
@@ -115,6 +205,9 @@ export default function Game() {
         setLastResult(response.data);
         setScore(response.data.new_score);
         setExercisesCompleted((prev) => prev + 1);
+
+        // Generar frase motivacional aleatoria
+        setMotivationalPhrase(getRandomPhrase(response.data.is_correct));
 
         if (response.data.is_correct) {
           setCorrectAnswers((prev) => prev + 1);
@@ -303,7 +396,14 @@ export default function Game() {
 
   if (gameState === 'playing' || gameState === 'result') {
     return (
-      <div className="fixed inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-4 overflow-y-auto">
+      <div
+        className="fixed inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-4 overflow-y-auto select-none"
+        style={{ userSelect: 'none', WebkitUserSelect: 'none', MozUserSelect: 'none', msUserSelect: 'none' }}
+        onCopy={(e) => e.preventDefault()}
+        onPaste={(e) => e.preventDefault()}
+        onCut={(e) => e.preventDefault()}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         {showConfetti && <Confetti recycle={false} numberOfPieces={500} />}
 
         {/* Botón flotante para salir */}
@@ -409,7 +509,7 @@ export default function Game() {
                   </h2>
                   <div className="text-center text-gray-600">
                     <Star className="w-5 h-5 inline mr-2 text-yellow-500" />
-                    Vale {currentExercise.possible_points} puntos
+                    +{currentExercise.possible_points} si aciertas
                   </div>
                 </motion.div>
 
@@ -483,13 +583,21 @@ export default function Game() {
                             }`}
                           >
                             {lastResult.is_correct
-                              ? '¡Excelente! 🎉'
-                              : 'Incorrecto 😔'}
+                              ? `¡Correcto! ${streak >= 3 ? '🔥' : '🎉'}`
+                              : 'Incorrecto 💪'}
                           </h3>
+                          {/* Frase motivacional */}
                           <p
-                            className={
-                              lastResult.is_correct ? 'text-green-700' : 'text-red-700'
-                            }
+                            className={`text-lg font-medium mb-2 ${
+                              lastResult.is_correct ? 'text-green-700' : 'text-orange-600'
+                            }`}
+                          >
+                            {motivationalPhrase}
+                          </p>
+                          <p
+                            className={`text-sm ${
+                              lastResult.is_correct ? 'text-green-600' : 'text-red-600'
+                            }`}
                           >
                             {lastResult.explanation}
                           </p>
