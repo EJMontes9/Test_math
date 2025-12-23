@@ -271,22 +271,27 @@ class StudentGoal(Base):
     student = relationship("User")
 
 
-# Competencias (Versus)
+# Competencias (Versus) - Enfrentamientos entre paralelos
 class Challenge(Base):
     __tablename__ = "challenges"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)
+    # Paralelos que compiten (ahora son dos)
+    paralelo1_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=False)
+    paralelo2_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=False)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     topic = Column(SQLEnum(MathTopic), nullable=True)  # Tema especifico o null para todos
     difficulty = Column(SQLEnum(ExerciseDifficulty), nullable=True)  # Dificultad o null para mixta
-    num_exercises = Column(Integer, default=10)  # Numero de ejercicios
+    num_exercises = Column(Integer, default=10)  # Numero de ejercicios por estudiante
     time_limit = Column(Integer, nullable=True)  # Tiempo limite en minutos (null = sin limite)
-    max_participants = Column(Integer, default=2)  # Numero maximo de participantes
     status = Column(SQLEnum(ChallengeStatus), default=ChallengeStatus.pending)
-    winner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    # Ganador ahora es un paralelo, no un usuario individual
+    winner_paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)
+    # Puntuaciones totales por paralelo
+    paralelo1_score = Column(Integer, default=0)
+    paralelo2_score = Column(Integer, default=0)
     start_time = Column(DateTime(timezone=True), nullable=True)
     end_time = Column(DateTime(timezone=True), nullable=True)
     is_active = Column(Boolean, default=True)
@@ -295,8 +300,9 @@ class Challenge(Base):
 
     # Relationships
     teacher = relationship("User", foreign_keys=[teacher_id])
-    winner = relationship("User", foreign_keys=[winner_id])
-    paralelo = relationship("Paralelo")
+    paralelo1 = relationship("Paralelo", foreign_keys=[paralelo1_id])
+    paralelo2 = relationship("Paralelo", foreign_keys=[paralelo2_id])
+    winner_paralelo = relationship("Paralelo", foreign_keys=[winner_paralelo_id])
     participants = relationship("ChallengeParticipant", back_populates="challenge", cascade="all, delete-orphan")
 
 
@@ -307,6 +313,7 @@ class ChallengeParticipant(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     challenge_id = Column(UUID(as_uuid=True), ForeignKey("challenges.id"), nullable=False)
     student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=False)  # Paralelo del participante
     score = Column(Integer, default=0)
     exercises_completed = Column(Integer, default=0)
     correct_answers = Column(Integer, default=0)
@@ -319,6 +326,7 @@ class ChallengeParticipant(Base):
     # Relationships
     challenge = relationship("Challenge", back_populates="participants")
     student = relationship("User")
+    paralelo = relationship("Paralelo")
 
 
 # Categorias de insignias

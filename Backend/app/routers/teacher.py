@@ -55,17 +55,16 @@ class GoalUpdate(BaseModel):
         populate_by_name = True
 
 
-# ============= Schemas para Challenges =============
+# ============= Schemas para Challenges (Versus entre Paralelos) =============
 class ChallengeCreate(BaseModel):
     title: str
     description: Optional[str] = None
-    paralelo_id: Optional[UUID] = Field(None, alias="paraleloId")
+    paralelo1_id: UUID = Field(alias="paralelo1Id")
+    paralelo2_id: UUID = Field(alias="paralelo2Id")
     topic: Optional[MathTopic] = None
     difficulty: Optional[ExerciseDifficulty] = None
     num_exercises: int = Field(default=10, alias="numExercises")
     time_limit: Optional[int] = Field(None, alias="timeLimit")
-    max_participants: int = Field(default=2, alias="maxParticipants")
-    student_ids: List[UUID] = Field(default=[], alias="studentIds")
 
     class Config:
         populate_by_name = True
@@ -645,7 +644,7 @@ async def get_goal_students(
     })
 
 
-# ============= CHALLENGES (VERSUS) ENDPOINTS =============
+# ============= CHALLENGES (VERSUS ENTRE PARALELOS) ENDPOINTS =============
 
 @router.get("/challenges", response_model=APIResponse)
 async def get_challenges(
@@ -654,11 +653,13 @@ async def get_challenges(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher)
 ):
-    """Obtener todas las competencias del profesor"""
+    """Obtener todas las competencias del profesor (enfrentamientos entre paralelos)"""
     query = db.query(Challenge).filter(Challenge.teacher_id == current_user.id)
 
     if paralelo_id:
-        query = query.filter(Challenge.paralelo_id == paralelo_id)
+        query = query.filter(
+            or_(Challenge.paralelo1_id == paralelo_id, Challenge.paralelo2_id == paralelo_id)
+        )
 
     if status:
         query = query.filter(Challenge.status == status)
@@ -667,44 +668,67 @@ async def get_challenges(
 
     challenges_data = []
     for challenge in challenges:
+        # Obtener participantes agrupados por paralelo
         participants = db.query(ChallengeParticipant).filter(
             ChallengeParticipant.challenge_id == challenge.id
-        ).order_by(desc(ChallengeParticipant.score)).all()
+        ).all()
 
-        participants_data = []
+        # Separar participantes por paralelo
+        paralelo1_participants = []
+        paralelo2_participants = []
+        paralelo1_total_score = 0
+        paralelo2_total_score = 0
+
         for p in participants:
             student = p.student
-            participants_data.append({
+            participant_data = {
                 "id": str(p.id),
                 "studentId": str(student.id),
                 "firstName": student.first_name,
                 "lastName": student.last_name,
+                "paraleloId": str(p.paralelo_id),
                 "score": p.score,
                 "exercisesCompleted": p.exercises_completed,
                 "correctAnswers": p.correct_answers,
                 "wrongAnswers": p.wrong_answers,
                 "timeTaken": p.time_taken,
                 "hasFinished": p.has_finished
-            })
+            }
+            if p.paralelo_id == challenge.paralelo1_id:
+                paralelo1_participants.append(participant_data)
+                paralelo1_total_score += p.score
+            else:
+                paralelo2_participants.append(participant_data)
+                paralelo2_total_score += p.score
+
+        # Ordenar por score
+        paralelo1_participants.sort(key=lambda x: x["score"], reverse=True)
+        paralelo2_participants.sort(key=lambda x: x["score"], reverse=True)
 
         challenges_data.append({
             "id": str(challenge.id),
             "title": challenge.title,
             "description": challenge.description,
-            "paraleloId": str(challenge.paralelo_id) if challenge.paralelo_id else None,
-            "paraleloName": challenge.paralelo.name if challenge.paralelo else "Todos",
+            "paralelo1Id": str(challenge.paralelo1_id),
+            "paralelo1Name": challenge.paralelo1.name if challenge.paralelo1 else "Paralelo 1",
+            "paralelo2Id": str(challenge.paralelo2_id),
+            "paralelo2Name": challenge.paralelo2.name if challenge.paralelo2 else "Paralelo 2",
+            "paralelo1Score": challenge.paralelo1_score,
+            "paralelo2Score": challenge.paralelo2_score,
             "topic": challenge.topic.value if challenge.topic else None,
             "difficulty": challenge.difficulty.value if challenge.difficulty else None,
             "numExercises": challenge.num_exercises,
             "timeLimit": challenge.time_limit,
-            "maxParticipants": challenge.max_participants,
             "status": challenge.status.value,
-            "winnerId": str(challenge.winner_id) if challenge.winner_id else None,
-            "winnerName": f"{challenge.winner.first_name} {challenge.winner.last_name}" if challenge.winner else None,
+            "winnerParaleloId": str(challenge.winner_paralelo_id) if challenge.winner_paralelo_id else None,
+            "winnerParaleloName": challenge.winner_paralelo.name if challenge.winner_paralelo else None,
             "startTime": challenge.start_time.isoformat() if challenge.start_time else None,
             "endTime": challenge.end_time.isoformat() if challenge.end_time else None,
-            "participants": participants_data,
-            "participantCount": len(participants),
+            "paralelo1Participants": paralelo1_participants,
+            "paralelo2Participants": paralelo2_participants,
+            "paralelo1ParticipantCount": len(paralelo1_participants),
+            "paralelo2ParticipantCount": len(paralelo2_participants),
+            "totalParticipants": len(participants),
             "createdAt": challenge.created_at.isoformat()
         })
 
@@ -717,45 +741,75 @@ async def create_challenge(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher)
 ):
-    """Crear una nueva competencia"""
-    # Verificar paralelo si se especifica
-    if challenge_data.paralelo_id:
-        paralelo = db.query(Paralelo).filter(
-            Paralelo.id == challenge_data.paralelo_id,
-            Paralelo.teacher_id == current_user.id
-        ).first()
-        if not paralelo:
-            raise HTTPException(status_code=404, detail="Paralelo no encontrado")
+    """Crear una nueva competencia entre dos paralelos"""
+    # Verificar que ambos paralelos existen y pertenecen al profesor
+    paralelo1 = db.query(Paralelo).filter(
+        Paralelo.id == challenge_data.paralelo1_id,
+        Paralelo.teacher_id == current_user.id
+    ).first()
+    if not paralelo1:
+        raise HTTPException(status_code=404, detail="Paralelo 1 no encontrado")
+
+    paralelo2 = db.query(Paralelo).filter(
+        Paralelo.id == challenge_data.paralelo2_id,
+        Paralelo.teacher_id == current_user.id
+    ).first()
+    if not paralelo2:
+        raise HTTPException(status_code=404, detail="Paralelo 2 no encontrado")
+
+    # Verificar que sean paralelos diferentes
+    if challenge_data.paralelo1_id == challenge_data.paralelo2_id:
+        raise HTTPException(status_code=400, detail="Los paralelos deben ser diferentes")
 
     # Crear la competencia
     new_challenge = Challenge(
         teacher_id=current_user.id,
-        paralelo_id=challenge_data.paralelo_id,
+        paralelo1_id=challenge_data.paralelo1_id,
+        paralelo2_id=challenge_data.paralelo2_id,
         title=challenge_data.title,
         description=challenge_data.description,
         topic=challenge_data.topic,
         difficulty=challenge_data.difficulty,
         num_exercises=challenge_data.num_exercises,
         time_limit=challenge_data.time_limit,
-        max_participants=challenge_data.max_participants,
         status=ChallengeStatus.pending
     )
     db.add(new_challenge)
     db.flush()
 
-    # Agregar participantes si se especifican
-    for student_id in challenge_data.student_ids[:challenge_data.max_participants]:
+    # Agregar todos los estudiantes de ambos paralelos como participantes
+    enrollments1 = db.query(Enrollment).filter(
+        Enrollment.paralelo_id == challenge_data.paralelo1_id,
+        Enrollment.is_active == True
+    ).all()
+
+    enrollments2 = db.query(Enrollment).filter(
+        Enrollment.paralelo_id == challenge_data.paralelo2_id,
+        Enrollment.is_active == True
+    ).all()
+
+    for enrollment in enrollments1:
         participant = ChallengeParticipant(
             challenge_id=new_challenge.id,
-            student_id=student_id
+            student_id=enrollment.student_id,
+            paralelo_id=challenge_data.paralelo1_id
+        )
+        db.add(participant)
+
+    for enrollment in enrollments2:
+        participant = ChallengeParticipant(
+            challenge_id=new_challenge.id,
+            student_id=enrollment.student_id,
+            paralelo_id=challenge_data.paralelo2_id
         )
         db.add(participant)
 
     db.commit()
 
+    total_participants = len(enrollments1) + len(enrollments2)
     return APIResponse(
         success=True,
-        message="Competencia creada exitosamente",
+        message=f"Competencia creada con {total_participants} participantes",
         data={"id": str(new_challenge.id)}
     )
 
@@ -780,18 +834,6 @@ async def update_challenge(
         challenge.title = challenge_data.title
     if challenge_data.description is not None:
         challenge.description = challenge_data.description
-    if challenge_data.status is not None:
-        challenge.status = challenge_data.status
-        if challenge_data.status == ChallengeStatus.active:
-            challenge.start_time = datetime.now()
-        elif challenge_data.status == ChallengeStatus.completed:
-            challenge.end_time = datetime.now()
-            # Determinar ganador
-            winner = db.query(ChallengeParticipant).filter(
-                ChallengeParticipant.challenge_id == challenge_id
-            ).order_by(desc(ChallengeParticipant.score)).first()
-            if winner:
-                challenge.winner_id = winner.student_id
     if challenge_data.is_active is not None:
         challenge.is_active = challenge_data.is_active
 
@@ -827,7 +869,7 @@ async def start_challenge(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher)
 ):
-    """Iniciar una competencia"""
+    """Iniciar una competencia entre paralelos"""
     challenge = db.query(Challenge).filter(
         Challenge.id == challenge_id,
         Challenge.teacher_id == current_user.id
@@ -839,12 +881,19 @@ async def start_challenge(
     if challenge.status != ChallengeStatus.pending:
         raise HTTPException(status_code=400, detail="La competencia ya fue iniciada o finalizada")
 
-    participants_count = db.query(ChallengeParticipant).filter(
-        ChallengeParticipant.challenge_id == challenge_id
+    # Verificar que hay participantes de ambos paralelos
+    paralelo1_count = db.query(ChallengeParticipant).filter(
+        ChallengeParticipant.challenge_id == challenge_id,
+        ChallengeParticipant.paralelo_id == challenge.paralelo1_id
     ).count()
 
-    if participants_count < 2:
-        raise HTTPException(status_code=400, detail="Se necesitan al menos 2 participantes")
+    paralelo2_count = db.query(ChallengeParticipant).filter(
+        ChallengeParticipant.challenge_id == challenge_id,
+        ChallengeParticipant.paralelo_id == challenge.paralelo2_id
+    ).count()
+
+    if paralelo1_count == 0 or paralelo2_count == 0:
+        raise HTTPException(status_code=400, detail="Ambos paralelos deben tener al menos un participante")
 
     challenge.status = ChallengeStatus.active
     challenge.start_time = datetime.now()
@@ -859,7 +908,7 @@ async def end_challenge(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher)
 ):
-    """Finalizar una competencia"""
+    """Finalizar una competencia entre paralelos y determinar ganador"""
     challenge = db.query(Challenge).filter(
         Challenge.id == challenge_id,
         Challenge.teacher_id == current_user.id
@@ -871,68 +920,39 @@ async def end_challenge(
     challenge.status = ChallengeStatus.completed
     challenge.end_time = datetime.now()
 
-    # Determinar ganador
-    winner = db.query(ChallengeParticipant).filter(
-        ChallengeParticipant.challenge_id == challenge_id
-    ).order_by(desc(ChallengeParticipant.score)).first()
-
-    if winner:
-        challenge.winner_id = winner.student_id
-
-    db.commit()
-
-    return APIResponse(success=True, message="Competencia finalizada")
-
-
-@router.post("/challenges/{challenge_id}/add-participant", response_model=APIResponse)
-async def add_challenge_participant(
-    challenge_id: UUID,
-    student_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_teacher)
-):
-    """Agregar un participante a una competencia"""
-    challenge = db.query(Challenge).filter(
-        Challenge.id == challenge_id,
-        Challenge.teacher_id == current_user.id
-    ).first()
-
-    if not challenge:
-        raise HTTPException(status_code=404, detail="Competencia no encontrada")
-
-    if challenge.status != ChallengeStatus.pending:
-        raise HTTPException(status_code=400, detail="No se pueden agregar participantes a una competencia activa")
-
-    # Verificar que el estudiante existe
-    student = db.query(User).filter(User.id == student_id, User.role == UserRole.student).first()
-    if not student:
-        raise HTTPException(status_code=404, detail="Estudiante no encontrado")
-
-    # Verificar que no esté ya inscrito
-    existing = db.query(ChallengeParticipant).filter(
+    # Calcular puntuaciones totales por paralelo
+    paralelo1_score = db.query(func.sum(ChallengeParticipant.score)).filter(
         ChallengeParticipant.challenge_id == challenge_id,
-        ChallengeParticipant.student_id == student_id
-    ).first()
+        ChallengeParticipant.paralelo_id == challenge.paralelo1_id
+    ).scalar() or 0
 
-    if existing:
-        raise HTTPException(status_code=400, detail="El estudiante ya está inscrito")
+    paralelo2_score = db.query(func.sum(ChallengeParticipant.score)).filter(
+        ChallengeParticipant.challenge_id == challenge_id,
+        ChallengeParticipant.paralelo_id == challenge.paralelo2_id
+    ).scalar() or 0
 
-    # Verificar límite de participantes
-    current_count = db.query(ChallengeParticipant).filter(
-        ChallengeParticipant.challenge_id == challenge_id
-    ).count()
+    challenge.paralelo1_score = paralelo1_score
+    challenge.paralelo2_score = paralelo2_score
 
-    if current_count >= challenge.max_participants:
-        raise HTTPException(status_code=400, detail="Se alcanzó el límite de participantes")
+    # Determinar paralelo ganador
+    if paralelo1_score > paralelo2_score:
+        challenge.winner_paralelo_id = challenge.paralelo1_id
+    elif paralelo2_score > paralelo1_score:
+        challenge.winner_paralelo_id = challenge.paralelo2_id
+    # Si es empate, no hay ganador (winner_paralelo_id queda null)
 
-    participant = ChallengeParticipant(
-        challenge_id=challenge_id,
-        student_id=student_id
-    )
-    db.add(participant)
     db.commit()
 
-    return APIResponse(success=True, message="Participante agregado")
+    winner_name = challenge.winner_paralelo.name if challenge.winner_paralelo else "Empate"
+    return APIResponse(
+        success=True,
+        message=f"Competencia finalizada. Ganador: {winner_name}",
+        data={
+            "paralelo1Score": paralelo1_score,
+            "paralelo2Score": paralelo2_score,
+            "winnerParaleloId": str(challenge.winner_paralelo_id) if challenge.winner_paralelo_id else None
+        }
+    )
 
 
 # ============= RANKING ENDPOINTS =============

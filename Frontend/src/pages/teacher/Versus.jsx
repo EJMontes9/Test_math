@@ -12,12 +12,10 @@ import {
   Zap,
   X,
   Trash2,
-  UserPlus,
   CheckCircle,
-  AlertCircle,
   Filter,
   Crown,
-  Medal
+  ArrowRight
 } from 'lucide-react';
 import teacherService from '../../services/teacherService';
 
@@ -29,42 +27,38 @@ const CHALLENGE_STATUS = {
 };
 
 const MATH_TOPICS = {
-  operations: 'Operaciones Básicas',
+  operations: 'Operaciones Basicas',
   combined_operations: 'Operaciones Combinadas',
   linear_equations: 'Ecuaciones Lineales',
-  quadratic_equations: 'Ecuaciones Cuadráticas',
+  quadratic_equations: 'Ecuaciones Cuadraticas',
   fractions: 'Fracciones',
   percentages: 'Porcentajes',
-  geometry: 'Geometría',
-  algebra: 'Álgebra General'
+  geometry: 'Geometria',
+  algebra: 'Algebra General'
 };
 
 const DIFFICULTIES = {
-  easy: 'Fácil',
+  easy: 'Facil',
   medium: 'Medio',
-  hard: 'Difícil'
+  hard: 'Dificil'
 };
 
 export default function Versus() {
   const [challenges, setChallenges] = useState([]);
   const [paralelos, setParalelos] = useState([]);
-  const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [showAddStudentModal, setShowAddStudentModal] = useState(false);
-  const [selectedChallenge, setSelectedChallenge] = useState(null);
   const [filter, setFilter] = useState('all');
 
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    paraleloId: '',
+    paralelo1Id: '',
+    paralelo2Id: '',
     topic: '',
     difficulty: '',
     numExercises: 10,
-    timeLimit: '',
-    maxParticipants: 2,
-    studentIds: []
+    timeLimit: ''
   });
 
   useEffect(() => {
@@ -92,39 +86,18 @@ export default function Versus() {
     }
   };
 
-  const loadStudents = async (paraleloId) => {
-    if (!paraleloId) {
-      setStudents([]);
-      return;
-    }
-    try {
-      const response = await teacherService.getParaleloStudents(paraleloId);
-      if (response.success) {
-        setStudents(response.data.students);
-      }
-    } catch (error) {
-      console.error('Error al cargar estudiantes:', error);
-    }
-  };
-
-  const handleParaleloChange = (paraleloId) => {
-    setFormData({ ...formData, paraleloId, studentIds: [] });
-    loadStudents(paraleloId);
-  };
-
   const handleCreateChallenge = async (e) => {
     e.preventDefault();
     try {
       const challengePayload = {
         title: formData.title,
         description: formData.description || null,
-        paraleloId: formData.paraleloId || null,
+        paralelo1Id: formData.paralelo1Id,
+        paralelo2Id: formData.paralelo2Id,
         topic: formData.topic || null,
         difficulty: formData.difficulty || null,
         numExercises: parseInt(formData.numExercises),
-        timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null,
-        maxParticipants: parseInt(formData.maxParticipants),
-        studentIds: formData.studentIds
+        timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null
       };
 
       const response = await teacherService.createChallenge(challengePayload);
@@ -135,6 +108,7 @@ export default function Versus() {
       }
     } catch (error) {
       console.error('Error al crear competencia:', error);
+      alert(error.detail || 'Error al crear la competencia');
     }
   };
 
@@ -150,7 +124,7 @@ export default function Versus() {
   };
 
   const handleEndChallenge = async (challengeId) => {
-    if (!confirm('¿Estás seguro de finalizar esta competencia?')) return;
+    if (!confirm('Estas seguro de finalizar esta competencia?')) return;
 
     try {
       const response = await teacherService.endChallenge(challengeId);
@@ -163,7 +137,7 @@ export default function Versus() {
   };
 
   const handleDeleteChallenge = async (challengeId) => {
-    if (!confirm('¿Estás seguro de eliminar esta competencia?')) return;
+    if (!confirm('Estas seguro de eliminar esta competencia?')) return;
 
     try {
       const response = await teacherService.deleteChallenge(challengeId);
@@ -175,57 +149,17 @@ export default function Versus() {
     }
   };
 
-  const handleAddParticipant = async (studentId) => {
-    if (!selectedChallenge) return;
-
-    try {
-      const response = await teacherService.addChallengeParticipant(selectedChallenge.id, studentId);
-      if (response.success) {
-        setShowAddStudentModal(false);
-        setSelectedChallenge(null);
-        loadData();
-      }
-    } catch (error) {
-      alert(error.detail || 'Error al agregar participante');
-    }
-  };
-
-  const openAddStudentModal = async (challenge) => {
-    setSelectedChallenge(challenge);
-    if (challenge.paraleloId) {
-      await loadStudents(challenge.paraleloId);
-    }
-    setShowAddStudentModal(true);
-  };
-
   const resetForm = () => {
     setFormData({
       title: '',
       description: '',
-      paraleloId: '',
+      paralelo1Id: '',
+      paralelo2Id: '',
       topic: '',
       difficulty: '',
       numExercises: 10,
-      timeLimit: '',
-      maxParticipants: 2,
-      studentIds: []
+      timeLimit: ''
     });
-    setStudents([]);
-  };
-
-  const toggleStudentSelection = (studentId) => {
-    const currentIds = formData.studentIds;
-    if (currentIds.includes(studentId)) {
-      setFormData({
-        ...formData,
-        studentIds: currentIds.filter(id => id !== studentId)
-      });
-    } else if (currentIds.length < formData.maxParticipants) {
-      setFormData({
-        ...formData,
-        studentIds: [...currentIds, studentId]
-      });
-    }
   };
 
   const getStatusInfo = (status) => {
@@ -235,7 +169,7 @@ export default function Versus() {
   // Stats
   const activeChallenges = challenges.filter(c => c.status === 'active').length;
   const completedChallenges = challenges.filter(c => c.status === 'completed').length;
-  const totalParticipants = challenges.reduce((acc, c) => acc + c.participantCount, 0);
+  const totalParticipants = challenges.reduce((acc, c) => acc + (c.totalParticipants || 0), 0);
 
   if (loading) {
     return (
@@ -251,18 +185,25 @@ export default function Versus() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Versus</h1>
-          <p className="text-gray-600 mt-1">Crea competencias entre estudiantes</p>
+          <p className="text-gray-600 mt-1">Crea competencias entre paralelos</p>
         </div>
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
+          disabled={paralelos.length < 2}
+          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-5 h-5" />
           Nueva Competencia
         </motion.button>
       </div>
+
+      {paralelos.length < 2 && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-yellow-800">
+          <p className="font-medium">Necesitas al menos 2 paralelos para crear una competencia entre ellos.</p>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -333,11 +274,13 @@ export default function Versus() {
       </div>
 
       {/* Challenges List */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-6">
         <AnimatePresence>
           {challenges.map((challenge, index) => {
             const statusInfo = getStatusInfo(challenge.status);
             const StatusIcon = statusInfo.icon;
+            const isParalelo1Winner = challenge.winnerParaleloId === challenge.paralelo1Id;
+            const isParalelo2Winner = challenge.winnerParaleloId === challenge.paralelo2Id;
 
             return (
               <motion.div
@@ -356,8 +299,14 @@ export default function Versus() {
                         <Swords className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-gray-900">{challenge.title}</h3>
-                        <p className="text-sm text-gray-500">{challenge.paraleloName}</p>
+                        <h3 className="font-bold text-gray-900 text-lg">{challenge.title}</h3>
+                        <p className="text-sm text-gray-500 flex items-center gap-2">
+                          <span>{challenge.paralelo1Name}</span>
+                          <ArrowRight className="w-4 h-4" />
+                          <span>vs</span>
+                          <ArrowRight className="w-4 h-4" />
+                          <span>{challenge.paralelo2Name}</span>
+                        </p>
                       </div>
                     </div>
                     <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-${statusInfo.color}-100 text-${statusInfo.color}-800`}>
@@ -400,76 +349,96 @@ export default function Versus() {
                   </div>
                 </div>
 
-                {/* Participants */}
+                {/* Paralelos vs Paralelos */}
                 <div className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <h4 className="font-medium text-gray-900">
-                      Participantes ({challenge.participantCount}/{challenge.maxParticipants})
-                    </h4>
-                    {challenge.status === 'pending' && challenge.participantCount < challenge.maxParticipants && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => openAddStudentModal(challenge)}
-                        className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        Agregar
-                      </motion.button>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    {challenge.participants.map((participant, pIndex) => (
-                      <div
-                        key={participant.id}
-                        className="flex items-center justify-between p-3 rounded-xl bg-gray-50"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="relative">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                              {participant.firstName.charAt(0)}{participant.lastName.charAt(0)}
-                            </div>
-                            {challenge.status === 'completed' && participant.studentId === challenge.winnerId && (
-                              <div className="absolute -top-1 -right-1">
-                                <Crown className="w-4 h-4 text-yellow-500" />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">
-                              {participant.firstName} {participant.lastName}
-                            </p>
-                            {challenge.status !== 'pending' && (
-                              <p className="text-xs text-gray-500">
-                                {participant.correctAnswers}/{participant.exercisesCompleted} correctas
-                              </p>
-                            )}
-                          </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Paralelo 1 */}
+                    <div className={`rounded-xl p-4 ${isParalelo1Winner ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {isParalelo1Winner && <Crown className="w-5 h-5 text-yellow-500" />}
+                          <h4 className="font-bold text-gray-900">{challenge.paralelo1Name}</h4>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-indigo-600">{participant.score}</p>
+                          <p className="text-2xl font-bold text-indigo-600">{challenge.paralelo1Score || 0}</p>
                           <p className="text-xs text-gray-500">puntos</p>
                         </div>
                       </div>
-                    ))}
-
-                    {challenge.participants.length === 0 && (
-                      <div className="text-center py-4 text-gray-500 text-sm">
-                        No hay participantes
+                      <p className="text-sm text-gray-600 mb-2">
+                        {challenge.paralelo1ParticipantCount || 0} participantes
+                      </p>
+                      {/* Top 3 estudiantes */}
+                      <div className="space-y-1">
+                        {(challenge.paralelo1Participants || []).slice(0, 3).map((p, idx) => (
+                          <div key={p.id} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                idx === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                idx === 1 ? 'bg-gray-300 text-gray-700' :
+                                'bg-orange-300 text-orange-900'
+                              }`}>
+                                {idx + 1}
+                              </span>
+                              <span className="text-gray-700">{p.firstName} {p.lastName}</span>
+                            </div>
+                            <span className="font-medium text-indigo-600">{p.score}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+
+                    {/* Paralelo 2 */}
+                    <div className={`rounded-xl p-4 ${isParalelo2Winner ? 'bg-green-50 border-2 border-green-500' : 'bg-gray-50'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {isParalelo2Winner && <Crown className="w-5 h-5 text-yellow-500" />}
+                          <h4 className="font-bold text-gray-900">{challenge.paralelo2Name}</h4>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-purple-600">{challenge.paralelo2Score || 0}</p>
+                          <p className="text-xs text-gray-500">puntos</p>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {challenge.paralelo2ParticipantCount || 0} participantes
+                      </p>
+                      {/* Top 3 estudiantes */}
+                      <div className="space-y-1">
+                        {(challenge.paralelo2Participants || []).slice(0, 3).map((p, idx) => (
+                          <div key={p.id} className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                                idx === 0 ? 'bg-yellow-400 text-yellow-900' :
+                                idx === 1 ? 'bg-gray-300 text-gray-700' :
+                                'bg-orange-300 text-orange-900'
+                              }`}>
+                                {idx + 1}
+                              </span>
+                              <span className="text-gray-700">{p.firstName} {p.lastName}</span>
+                            </div>
+                            <span className="font-medium text-purple-600">{p.score}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Winner */}
-                  {challenge.status === 'completed' && challenge.winnerName && (
-                    <div className="mt-4 p-3 rounded-xl bg-yellow-50 border border-yellow-200">
-                      <div className="flex items-center gap-2">
-                        <Trophy className="w-5 h-5 text-yellow-600" />
-                        <span className="text-sm font-medium text-yellow-800">
-                          Ganador: {challenge.winnerName}
+                  {/* Winner Banner */}
+                  {challenge.status === 'completed' && challenge.winnerParaleloName && (
+                    <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-yellow-100 to-yellow-50 border border-yellow-200">
+                      <div className="flex items-center justify-center gap-3">
+                        <Trophy className="w-6 h-6 text-yellow-600" />
+                        <span className="text-lg font-bold text-yellow-800">
+                          Ganador: {challenge.winnerParaleloName}
                         </span>
+                        <Trophy className="w-6 h-6 text-yellow-600" />
                       </div>
+                    </div>
+                  )}
+
+                  {challenge.status === 'completed' && !challenge.winnerParaleloId && (
+                    <div className="mt-4 p-4 rounded-xl bg-gray-100 border border-gray-200 text-center">
+                      <span className="text-lg font-bold text-gray-600">Empate</span>
                     </div>
                   )}
                 </div>
@@ -482,11 +451,10 @@ export default function Versus() {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => handleStartChallenge(challenge.id)}
-                        disabled={challenge.participantCount < 2}
-                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors"
                       >
                         <Play className="w-4 h-4" />
-                        Iniciar
+                        Iniciar Competencia
                       </motion.button>
                       <motion.button
                         whileHover={{ scale: 1.05 }}
@@ -507,7 +475,7 @@ export default function Versus() {
                       className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors"
                     >
                       <Square className="w-4 h-4" />
-                      Finalizar
+                      Finalizar Competencia
                     </motion.button>
                   )}
                 </div>
@@ -521,15 +489,17 @@ export default function Versus() {
         <div className="text-center py-12">
           <Swords className="w-16 h-16 text-gray-400 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No hay competencias</h3>
-          <p className="text-gray-500 mb-4">Crea tu primera competencia para motivar a tus estudiantes</p>
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowModal(true)}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
-          >
-            Crear Competencia
-          </motion.button>
+          <p className="text-gray-500 mb-4">Crea tu primera competencia entre paralelos</p>
+          {paralelos.length >= 2 && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowModal(true)}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
+            >
+              Crear Competencia
+            </motion.button>
+          )}
         </div>
       )}
 
@@ -552,7 +522,7 @@ export default function Versus() {
             >
               <div className="p-6 border-b border-gray-100">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">Nueva Competencia</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Nueva Competencia entre Paralelos</h2>
                   <button
                     onClick={() => setShowModal(false)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -565,21 +535,21 @@ export default function Versus() {
               <form onSubmit={handleCreateChallenge} className="p-6 space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Título
+                    Titulo de la Competencia
                   </label>
                   <input
                     type="text"
                     value={formData.title}
                     onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                    placeholder="Ej: Batalla de Fracciones"
+                    placeholder="Ej: Gran Batalla Matematica"
                     required
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Descripción (opcional)
+                    Descripcion (opcional)
                   </label>
                   <textarea
                     value={formData.description}
@@ -590,20 +560,56 @@ export default function Versus() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Paralelo
-                  </label>
-                  <select
-                    value={formData.paraleloId}
-                    onChange={(e) => handleParaleloChange(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                  >
-                    <option value="">Seleccionar paralelo</option>
-                    {paralelos.map(p => (
-                      <option key={p.id} value={p.id}>{p.name}</option>
-                    ))}
-                  </select>
+                {/* Seleccion de Paralelos */}
+                <div className="bg-indigo-50 rounded-xl p-4 space-y-4">
+                  <h3 className="font-medium text-indigo-900 flex items-center gap-2">
+                    <Swords className="w-5 h-5" />
+                    Paralelos que Competiran
+                  </h3>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Paralelo 1
+                      </label>
+                      <select
+                        value={formData.paralelo1Id}
+                        onChange={(e) => setFormData({ ...formData, paralelo1Id: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Seleccionar...</option>
+                        {paralelos.filter(p => p.id !== formData.paralelo2Id).map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Paralelo 2
+                      </label>
+                      <select
+                        value={formData.paralelo2Id}
+                        onChange={(e) => setFormData({ ...formData, paralelo2Id: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        required
+                      >
+                        <option value="">Seleccionar...</option>
+                        {paralelos.filter(p => p.id !== formData.paralelo1Id).map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {formData.paralelo1Id && formData.paralelo2Id && (
+                    <div className="flex items-center justify-center gap-3 text-indigo-700 font-medium">
+                      <span>{paralelos.find(p => p.id === formData.paralelo1Id)?.name}</span>
+                      <span className="text-xl">vs</span>
+                      <span>{paralelos.find(p => p.id === formData.paralelo2Id)?.name}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -640,10 +646,10 @@ export default function Versus() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Ejercicios
+                      Ejercicios por estudiante
                     </label>
                     <input
                       type="number"
@@ -658,65 +664,18 @@ export default function Versus() {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tiempo (min)
+                      Tiempo limite (min)
                     </label>
                     <input
                       type="number"
                       value={formData.timeLimit}
                       onChange={(e) => setFormData({ ...formData, timeLimit: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="Sin límite"
+                      placeholder="Sin limite"
                       min="1"
                     />
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Participantes
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.maxParticipants}
-                      onChange={(e) => setFormData({ ...formData, maxParticipants: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      min="2"
-                      max="10"
-                      required
-                    />
-                  </div>
                 </div>
-
-                {/* Student Selection */}
-                {formData.paraleloId && students.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Seleccionar Participantes ({formData.studentIds.length}/{formData.maxParticipants})
-                    </label>
-                    <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-xl p-2 space-y-1">
-                      {students.map(student => (
-                        <div
-                          key={student.id}
-                          onClick={() => toggleStudentSelection(student.id)}
-                          className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                            formData.studentIds.includes(student.id)
-                              ? 'bg-indigo-100 border-2 border-indigo-500'
-                              : 'hover:bg-gray-100'
-                          }`}
-                        >
-                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
-                            {student.firstName.charAt(0)}{student.lastName.charAt(0)}
-                          </div>
-                          <span className="text-sm text-gray-900">
-                            {student.firstName} {student.lastName}
-                          </span>
-                          {formData.studentIds.includes(student.id) && (
-                            <CheckCircle className="w-4 h-4 text-indigo-600 ml-auto" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <div className="flex justify-end gap-3 pt-4">
                   <button
@@ -730,78 +689,13 @@ export default function Versus() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     type="submit"
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors"
+                    disabled={!formData.paralelo1Id || !formData.paralelo2Id}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Crear Competencia
                   </motion.button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Add Student Modal */}
-      <AnimatePresence>
-        {showAddStudentModal && selectedChallenge && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-            onClick={() => setShowAddStudentModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-xl w-full max-w-md"
-            >
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-900">Agregar Participante</h2>
-                  <button
-                    onClick={() => setShowAddStudentModal(false)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <X className="w-5 h-5 text-gray-500" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-6">
-                <div className="max-h-60 overflow-y-auto space-y-2">
-                  {students
-                    .filter(s => !selectedChallenge.participants.some(p => p.studentId === s.id))
-                    .map(student => (
-                      <motion.div
-                        key={student.id}
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleAddParticipant(student.id)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-100 cursor-pointer transition-colors"
-                      >
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                          {student.firstName.charAt(0)}{student.lastName.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {student.firstName} {student.lastName}
-                          </p>
-                          <p className="text-xs text-gray-500">{student.email}</p>
-                        </div>
-                        <UserPlus className="w-5 h-5 text-indigo-600 ml-auto" />
-                      </motion.div>
-                    ))}
-
-                  {students.filter(s => !selectedChallenge.participants.some(p => p.studentId === s.id)).length === 0 && (
-                    <div className="text-center py-4 text-gray-500">
-                      No hay estudiantes disponibles
-                    </div>
-                  )}
-                </div>
-              </div>
             </motion.div>
           </motion.div>
         )}
