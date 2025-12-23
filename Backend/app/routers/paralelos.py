@@ -54,18 +54,31 @@ async def get_paralelos(
                 "email": paralelo.teacher.email
             }
 
+        # Contar estudiantes activos desde la tabla Enrollment
+        student_count = db.query(func.count(Enrollment.id)).filter(
+            Enrollment.paralelo_id == paralelo.id,
+            Enrollment.is_active == True
+        ).scalar() or 0
+
+        # Actualizar el campo student_count si está desactualizado
+        if paralelo.student_count != student_count:
+            paralelo.student_count = student_count
+
         paralelos_data.append({
             "id": str(paralelo.id),
             "name": paralelo.name,
             "level": paralelo.level,
             "teacherId": str(paralelo.teacher_id) if paralelo.teacher_id else None,
-            "studentCount": paralelo.student_count,
+            "studentCount": student_count,
             "isActive": paralelo.is_active,
             "description": paralelo.description,
             "teacher": teacher_data,
             "createdAt": paralelo.created_at.isoformat(),
             "updatedAt": paralelo.updated_at.isoformat()
         })
+
+    # Guardar actualizaciones de student_count si hubo cambios
+    db.commit()
 
     return APIResponse(success=True, data=paralelos_data)
 
@@ -79,9 +92,10 @@ async def get_paralelo_stats(
     total = db.query(func.count(Paralelo.id)).scalar()
     active = db.query(func.count(Paralelo.id)).filter(Paralelo.is_active == True).scalar()
 
-    # Total estudiantes
-    result = db.query(func.sum(Paralelo.student_count)).filter(Paralelo.is_active == True).scalar()
-    total_students = int(result) if result else 0
+    # Total estudiantes - contar desde Enrollment para datos precisos
+    total_students = db.query(func.count(Enrollment.id)).filter(
+        Enrollment.is_active == True
+    ).scalar() or 0
 
     stats = {
         "total": total,
