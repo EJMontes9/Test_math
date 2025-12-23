@@ -68,16 +68,14 @@ const Login = () => {
         console.log('📧 Email:', result.user.email);
         console.log('🔐 Rol:', result.user.role);
 
-        // Redirigir según el rol
-        setTimeout(() => {
-          const redirectPath = result.user.role === 'admin'
-            ? '/admin/dashboard'
-            : result.user.role === 'teacher'
-            ? '/teacher/dashboard'
-            : '/student/dashboard';
-          console.log('🚀 Redirigiendo a:', redirectPath);
-          navigate(redirectPath);
-        }, 1000); // Reducido a 1 segundo
+        // Redirigir según el rol inmediatamente
+        const redirectPath = result.user.role === 'admin'
+          ? '/admin/dashboard'
+          : result.user.role === 'teacher'
+          ? '/teacher/dashboard'
+          : '/student/dashboard';
+        console.log('🚀 Redirigiendo a:', redirectPath);
+        navigate(redirectPath, { replace: true });
       } else {
         console.error('❌ Login falló:', result.message);
         setError(result.message || 'Credenciales incorrectas');

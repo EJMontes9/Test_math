@@ -2,12 +2,20 @@ import { useState } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import authService from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 
 const TeacherLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isAuthenticated = authService.isAuthenticated();
-  const user = authService.getStoredUser();
+  const { user, loading, isAuthenticated } = useAuth();
+
+  // Mostrar loading mientras se verifica la autenticación
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+      </div>
+    );
+  }
 
   // Redirigir si no está autenticado
   if (!isAuthenticated) {
