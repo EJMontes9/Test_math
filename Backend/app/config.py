@@ -26,6 +26,21 @@ class Settings(BaseSettings):
     RATE_LIMIT_WINDOW_MS: int = 900000  # 15 minutos
     RATE_LIMIT_MAX_REQUESTS: int = 100
 
+    # Email SMTP Configuration
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "noreply@mathmaster.com"
+    SMTP_FROM_NAME: str = "MathMaster"
+
+    # Frontend URL
+    FRONTEND_URL: str = "http://localhost:8080"
+
+    @property
+    def EMAIL_CONFIGURED(self) -> bool:
+        return bool(self.SMTP_USER and self.SMTP_PASSWORD)
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"

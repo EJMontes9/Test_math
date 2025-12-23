@@ -10,6 +10,10 @@ from app.database import get_db
 from app.models import User
 from app.schemas import LoginRequest, APIResponse
 from app.auth import verify_password, create_access_token, get_password_hash, get_current_user
+from app.services.email_service import send_password_reset_email
+from app.config import get_settings
+
+settings = get_settings()
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
@@ -135,19 +139,28 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
     user.reset_token_expires = datetime.now() + timedelta(hours=1)
     db.commit()
 
-    # En producción, aquí se enviaría el email con el enlace
-    # Por ahora, solo retornamos el token para testing
-    # TODO: Integrar servicio de email (SendGrid, AWS SES, etc.)
+    # Enviar email de restablecimiento
+    email_sent = send_password_reset_email(
+        to_email=user.email,
+        user_name=user.first_name or "Usuario",
+        reset_token=reset_token
+    )
+
+    # Si el email no está configurado, mostrar información de desarrollo
+    response_data = {
+        "emailSent": email_sent,
+        "expiresIn": "1 hora"
+    }
+
+    # En desarrollo, incluir el token para testing si el email no se envió
+    if not email_sent and settings.NODE_ENV == "development":
+        response_data["resetToken"] = reset_token
+        response_data["resetUrl"] = f"{settings.FRONTEND_URL}/reset-password?token={reset_token}"
 
     return APIResponse(
         success=True,
-        message="Si el email existe, recibirás un enlace para restablecer tu contraseña",
-        data={
-            # En producción, NO incluir el token en la respuesta
-            # Esto es solo para desarrollo/testing
-            "resetToken": reset_token,
-            "expiresIn": "1 hora"
-        }
+        message="Si el email existe, recibirás un enlace para restablecer tu contraseña" if email_sent else "Email no configurado. Usa el enlace de desarrollo para restablecer la contraseña.",
+        data=response_data
     )
 
 

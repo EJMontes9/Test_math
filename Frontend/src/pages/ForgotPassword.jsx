@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, ArrowLeft, Send, CheckCircle, AlertCircle } from 'lucide-react';
+import { Mail, ArrowLeft, Send, CheckCircle, AlertCircle, ExternalLink, Copy } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import authService from '../services/authService';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -9,19 +10,36 @@ const ForgotPassword = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [responseData, setResponseData] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simular envío de email (por ahora)
-    setTimeout(() => {
-      setSuccess(true);
+    try {
+      const response = await authService.forgotPassword(email);
+
+      if (response.success) {
+        setSuccess(true);
+        setResponseData(response.data);
+      } else {
+        setError(response.message || 'Error al procesar la solicitud');
+      }
+    } catch (err) {
+      setError('Error de conexión. Por favor intenta de nuevo.');
+    } finally {
       setIsLoading(false);
-      console.log('📧 Email de recuperación enviado a:', email);
-      console.log('⚠️ NOTA: Esta funcionalidad está pendiente de implementación en el backend');
-    }, 1500);
+    }
+  };
+
+  const handleCopyLink = () => {
+    if (responseData?.resetUrl) {
+      navigator.clipboard.writeText(responseData.resetUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (success) {
@@ -42,20 +60,61 @@ const ForgotPassword = () => {
           </motion.div>
 
           <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            ¡Email Enviado!
+            {responseData?.emailSent ? '¡Email Enviado!' : 'Solicitud Procesada'}
           </h2>
 
-          <p className="text-gray-600 mb-6">
-            Hemos enviado un enlace de recuperación a <strong>{email}</strong>.
-            Por favor revisa tu bandeja de entrada y sigue las instrucciones.
-          </p>
-
-          <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
-            <p className="text-sm text-yellow-800">
-              <strong>Nota:</strong> Esta funcionalidad está pendiente de implementación.
-              Por favor contacta al administrador para restablecer tu contraseña.
+          {responseData?.emailSent ? (
+            <p className="text-gray-600 mb-6">
+              Hemos enviado un enlace de recuperación a <strong>{email}</strong>.
+              Por favor revisa tu bandeja de entrada y sigue las instrucciones.
             </p>
-          </div>
+          ) : (
+            <>
+              <p className="text-gray-600 mb-4">
+                El servidor de correo no está configurado.
+              </p>
+
+              {responseData?.resetUrl && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
+                  <p className="text-sm text-blue-800 mb-3">
+                    <strong>Enlace de desarrollo:</strong>
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={responseData.resetUrl}
+                      readOnly
+                      className="flex-1 text-xs p-2 bg-white rounded border border-blue-300 overflow-hidden text-ellipsis"
+                    />
+                    <button
+                      onClick={handleCopyLink}
+                      className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      title="Copiar enlace"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {copied && (
+                    <p className="text-xs text-green-600 mt-2">¡Enlace copiado!</p>
+                  )}
+                  <a
+                    href={responseData.resetUrl}
+                    className="mt-3 inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-800"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Abrir enlace
+                  </a>
+                </div>
+              )}
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-yellow-800">
+                  <strong>Para producción:</strong> Configura las variables SMTP_USER y SMTP_PASSWORD
+                  en el archivo .env del backend para habilitar el envío de emails.
+                </p>
+              </div>
+            </>
+          )}
 
           <button
             onClick={() => navigate('/login')}
@@ -157,7 +216,7 @@ const ForgotPassword = () => {
         {/* Info */}
         <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
           <p className="text-sm text-blue-800 text-center">
-            <strong>Nota:</strong> Si no recibes el email en unos minutos, contacta al administrador del sistema en <strong>admin@mathmaster.com</strong>
+            <strong>Nota:</strong> Si no recibes el email en unos minutos, verifica tu carpeta de spam o contacta al administrador.
           </p>
         </div>
       </motion.div>
