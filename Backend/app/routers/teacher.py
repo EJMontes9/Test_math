@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 import os
@@ -1134,9 +1134,9 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post("/resources/upload", response_model=APIResponse)
 async def upload_resource_file(
     file: UploadFile = File(...),
-    title: str = "",
-    description: str = "",
-    topic: str = "",
+    title: str = Form(""),
+    description: str = Form(""),
+    topic: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher)
 ):
