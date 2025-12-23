@@ -3,6 +3,27 @@ import api from './api';
 const resourceService = {
   // ============= TEACHER RESOURCES =============
 
+  // Subir archivo PDF
+  uploadFile: async (file, title, description, topic) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title || '');
+      formData.append('description', description || '');
+      formData.append('topic', topic || '');
+
+      const response = await api.post('/teacher/resources/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Error al subir archivo:', error);
+      throw error.response?.data || { success: false, message: 'Error al subir archivo' };
+    }
+  },
+
   // Obtener recursos del profesor
   getTeacherResources: async (filters = {}) => {
     try {

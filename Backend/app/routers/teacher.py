@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
+import os
+import uuid as uuid_lib
+import shutil
 from sqlalchemy import func, and_, desc, or_
 from typing import Optional, List
 from uuid import UUID
@@ -1121,6 +1124,62 @@ async def create_resource(
     db.commit()
 
     return APIResponse(success=True, message="Recurso creado", data={"id": str(new_resource.id)})
+
+
+# Directorio para archivos subidos
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+
+@router.post("/resources/upload", response_model=APIResponse)
+async def upload_resource_file(
+    file: UploadFile = File(...),
+    title: str = "",
+    description: str = "",
+    topic: str = "",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_teacher)
+):
+    """Subir un archivo PDF como recurso"""
+    # Validar tipo de archivo
+    if not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(status_code=400, detail="Solo se permiten archivos PDF")
+
+    # Validar tamaño (máximo 10MB)
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="El archivo es demasiado grande (máximo 10MB)")
+
+    # Generar nombre único para el archivo
+    file_ext = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid_lib.uuid4()}{file_ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+
+    # Guardar archivo
+    with open(file_path, "wb") as f:
+        f.write(contents)
+
+    # Crear recurso en la base de datos
+    new_resource = Resource(
+        teacher_id=current_user.id,
+        title=title or file.filename,
+        description=description,
+        url=f"/api/files/{unique_filename}",
+        resource_type=ResourceType.pdf,
+        topic=MathTopic(topic) if topic else None
+    )
+    db.add(new_resource)
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        message="Archivo subido exitosamente",
+        data={
+            "id": str(new_resource.id),
+            "url": new_resource.url,
+            "filename": unique_filename
+        }
+    )
 
 
 @router.put("/resources/{resource_id}", response_model=APIResponse)

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Video, Link as LinkIcon, Plus, Search, Edit2, Trash2, Eye, Loader2, BookOpen, X } from 'lucide-react';
+import { FileText, Video, Link as LinkIcon, Plus, Search, Edit2, Trash2, Eye, Loader2, BookOpen, X, Upload, ExternalLink } from 'lucide-react';
 import resourceService from '../../services/resourceService';
+import { getConfiguredApiUrl } from '../../services/api';
 
 const resourceTypeIcons = {
   pdf: FileText,
@@ -20,6 +21,114 @@ const topicLabels = {
   algebra: 'Algebra'
 };
 
+// Funcion para extraer ID de video de YouTube
+const getYouTubeVideoId = (url) => {
+  if (!url) return null;
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return (match && match[2].length === 11) ? match[2] : null;
+};
+
+// Funcion para verificar si es una URL de YouTube
+const isYouTubeUrl = (url) => {
+  if (!url) return false;
+  return url.includes('youtube.com') || url.includes('youtu.be');
+};
+
+// Componente para visor de recursos
+const ResourceViewer = ({ resource, onClose }) => {
+  const apiUrl = getConfiguredApiUrl().replace('/api', '');
+
+  const renderContent = () => {
+    if (resource.resourceType === 'video' || isYouTubeUrl(resource.url)) {
+      const videoId = getYouTubeVideoId(resource.url);
+      if (videoId) {
+        return (
+          <div className="w-full aspect-video">
+            <iframe
+              src={`https://www.youtube.com/embed/${videoId}`}
+              className="w-full h-full rounded-lg"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              title={resource.title}
+            />
+          </div>
+        );
+      }
+    }
+
+    if (resource.resourceType === 'pdf') {
+      // Si es un archivo local subido
+      const pdfUrl = resource.url.startsWith('/api/files/')
+        ? `${apiUrl}${resource.url}`
+        : resource.url;
+
+      return (
+        <div className="w-full h-[70vh]">
+          <iframe
+            src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+            className="w-full h-full rounded-lg border border-gray-200"
+            title={resource.title}
+          />
+        </div>
+      );
+    }
+
+    // Para links externos, mostrar en iframe si es posible
+    return (
+      <div className="text-center py-8">
+        <ExternalLink className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+        <p className="text-gray-600 mb-4">Este recurso es un enlace externo</p>
+        <a
+          href={resource.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        >
+          <ExternalLink className="w-5 h-5" />
+          Abrir en nueva pestana
+        </a>
+      </div>
+    );
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        className="bg-white rounded-xl w-full max-w-5xl max-h-[90vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">{resource.title}</h2>
+            {resource.description && (
+              <p className="text-sm text-gray-500">{resource.description}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-4 overflow-auto max-h-[calc(90vh-80px)]">
+          {renderContent()}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
 export default function Resources() {
   const [resources, setResources] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +138,9 @@ export default function Resources() {
   const [showModal, setShowModal] = useState(false);
   const [editingResource, setEditingResource] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [viewingResource, setViewingResource] = useState(null);
+  const [uploadMode, setUploadMode] = useState('link'); // 'link' or 'file'
+  const [selectedFile, setSelectedFile] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -58,6 +170,7 @@ export default function Resources() {
   const handleOpenModal = (resource = null) => {
     if (resource) {
       setEditingResource(resource);
+      setUploadMode('link');
       setFormData({
         title: resource.title,
         description: resource.description || '',
@@ -67,6 +180,8 @@ export default function Resources() {
       });
     } else {
       setEditingResource(null);
+      setUploadMode('link');
+      setSelectedFile(null);
       setFormData({
         title: '',
         description: '',
@@ -81,6 +196,8 @@ export default function Resources() {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingResource(null);
+    setSelectedFile(null);
+    setUploadMode('link');
     setFormData({
       title: '',
       description: '',
@@ -90,15 +207,48 @@ export default function Resources() {
     });
   };
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        alert('Solo se permiten archivos PDF');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert('El archivo es demasiado grande (maximo 10MB)');
+        return;
+      }
+      setSelectedFile(file);
+      if (!formData.title) {
+        setFormData({ ...formData, title: file.name.replace('.pdf', '') });
+      }
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setSaving(true);
-      if (editingResource) {
+
+      if (uploadMode === 'file' && selectedFile && !editingResource) {
+        // Subir archivo
+        await resourceService.uploadFile(
+          selectedFile,
+          formData.title,
+          formData.description,
+          formData.topic
+        );
+      } else if (editingResource) {
         await resourceService.updateResource(editingResource.id, formData);
       } else {
-        await resourceService.createResource(formData);
+        // Detectar automaticamente si es YouTube
+        let resourceType = formData.resourceType;
+        if (isYouTubeUrl(formData.url)) {
+          resourceType = 'video';
+        }
+        await resourceService.createResource({ ...formData, resourceType });
       }
+
       handleCloseModal();
       loadResources();
     } catch (error) {
@@ -118,6 +268,11 @@ export default function Resources() {
       console.error('Error deleting resource:', error);
       alert(error.message || 'Error al eliminar recurso');
     }
+  };
+
+  const handleView = (resource) => {
+    setViewingResource(resource);
+    resourceService.registerView(resource.id).catch(() => {});
   };
 
   const filteredResources = resources.filter(r => {
@@ -205,6 +360,9 @@ export default function Resources() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredResources.map((resource, index) => {
             const Icon = resourceTypeIcons[resource.resourceType] || FileText;
+            const isYouTube = isYouTubeUrl(resource.url);
+            const videoId = isYouTube ? getYouTubeVideoId(resource.url) : null;
+
             return (
               <motion.div
                 key={resource.id}
@@ -213,15 +371,25 @@ export default function Resources() {
                 transition={{ delay: index * 0.05 }}
                 className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
               >
-                <div className="h-32 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative">
-                  <Icon className="w-12 h-12 text-white/80" />
-                  <div className="absolute top-2 right-2 bg-white/20 px-2 py-1 rounded-lg text-white text-xs">
+                {/* Thumbnail */}
+                <div className="h-32 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center relative overflow-hidden">
+                  {isYouTube && videoId ? (
+                    <img
+                      src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
+                      alt={resource.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Icon className="w-12 h-12 text-white/80" />
+                  )}
+                  <div className="absolute top-2 right-2 bg-white/20 px-2 py-1 rounded-lg text-white text-xs backdrop-blur-sm">
                     {resource.resourceType.toUpperCase()}
                   </div>
                 </div>
+
                 <div className="p-4">
-                  <h3 className="font-bold text-gray-800 mb-1">{resource.title}</h3>
-                  <p className="text-sm text-gray-500 mb-3">{resource.description || 'Sin descripcion'}</p>
+                  <h3 className="font-bold text-gray-800 mb-1 truncate">{resource.title}</h3>
+                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{resource.description || 'Sin descripcion'}</p>
                   <div className="flex items-center justify-between text-sm mb-3">
                     <div className="flex items-center space-x-2 text-gray-400">
                       <Eye className="w-4 h-4" />
@@ -235,7 +403,7 @@ export default function Resources() {
                   </div>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => window.open(resource.url, '_blank')}
+                      onClick={() => handleView(resource)}
                       className="flex-1 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg font-medium flex items-center justify-center"
                     >
                       <Eye className="w-4 h-4 mr-1" />
@@ -261,7 +429,17 @@ export default function Resources() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal de Visor */}
+      <AnimatePresence>
+        {viewingResource && (
+          <ResourceViewer
+            resource={viewingResource}
+            onClose={() => setViewingResource(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Crear/Editar */}
       <AnimatePresence>
         {showModal && (
           <motion.div
@@ -287,6 +465,36 @@ export default function Resources() {
                 </button>
               </div>
 
+              {/* Selector de modo (solo para nuevo) */}
+              {!editingResource && (
+                <div className="flex gap-2 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode('link')}
+                    className={`flex-1 py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                      uploadMode === 'link'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                    URL / Link
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setUploadMode('file')}
+                    className={`flex-1 py-2 px-4 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                      uploadMode === 'file'
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4" />
+                    Subir PDF
+                  </button>
+                </div>
+              )}
+
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Titulo</label>
@@ -309,32 +517,68 @@ export default function Resources() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL del Recurso</label>
-                  <input
-                    type="url"
-                    value={formData.url}
-                    onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    placeholder="https://..."
-                    required
-                  />
-                </div>
+                {uploadMode === 'file' && !editingResource ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Archivo PDF</label>
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center hover:border-indigo-500 transition-colors">
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="hidden"
+                        id="file-upload"
+                      />
+                      <label htmlFor="file-upload" className="cursor-pointer">
+                        {selectedFile ? (
+                          <div className="flex items-center justify-center gap-2 text-indigo-600">
+                            <FileText className="w-6 h-6" />
+                            <span className="font-medium">{selectedFile.name}</span>
+                          </div>
+                        ) : (
+                          <div>
+                            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                            <p className="text-sm text-gray-500">
+                              Haz clic para seleccionar un PDF
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">Maximo 10MB</p>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      URL del Recurso
+                      <span className="text-gray-400 font-normal ml-1">(YouTube, PDF, o enlace)</span>
+                    </label>
+                    <input
+                      type="url"
+                      value={formData.url}
+                      onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      placeholder="https://..."
+                      required={uploadMode === 'link' || editingResource}
+                    />
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                    <select
-                      value={formData.resourceType}
-                      onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
-                    >
-                      <option value="link">Enlace</option>
-                      <option value="pdf">PDF</option>
-                      <option value="video">Video</option>
-                    </select>
-                  </div>
-                  <div>
+                  {(uploadMode === 'link' || editingResource) && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                      <select
+                        value={formData.resourceType}
+                        onChange={(e) => setFormData({ ...formData, resourceType: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                      >
+                        <option value="link">Enlace</option>
+                        <option value="pdf">PDF</option>
+                        <option value="video">Video</option>
+                      </select>
+                    </div>
+                  )}
+                  <div className={uploadMode === 'file' && !editingResource ? 'col-span-2' : ''}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Tema</label>
                     <select
                       value={formData.topic}
@@ -359,7 +603,7 @@ export default function Resources() {
                   </button>
                   <button
                     type="submit"
-                    disabled={saving}
+                    disabled={saving || (uploadMode === 'file' && !selectedFile && !editingResource)}
                     className="flex-1 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center"
                   >
                     {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Guardar'}

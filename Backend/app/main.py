@@ -122,6 +122,11 @@ app.include_router(settings_router.router)
 os.makedirs("static/avatars", exist_ok=True)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Servir archivos de recursos educativos (PDFs)
+UPLOADS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
+app.mount("/api/files", StaticFiles(directory=UPLOADS_DIR), name="uploads")
+
 
 # Evento de inicio
 @app.on_event("startup")
