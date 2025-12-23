@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calculator, Lock, Mail, LogIn, Brain, Plus, Minus, X, Divide, AlertCircle, CheckCircle } from 'lucide-react';
+import { Calculator, Lock, Mail, LogIn, Brain, Plus, Minus, X, Divide, AlertCircle, CheckCircle, Settings, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import authService from '../services/authService';
+import { setApiUrl, getConfiguredApiUrl } from '../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [showConfig, setShowConfig] = useState(false);
+  const [apiUrl, setApiUrlState] = useState(getConfiguredApiUrl());
 
   // Limpiar mensajes después de un tiempo
   useEffect(() => {
@@ -92,6 +95,18 @@ const Login = () => {
     return false;
   };
 
+  const handleSaveApiUrl = () => {
+    if (apiUrl && apiUrl.trim()) {
+      setApiUrl(apiUrl.trim());
+      // La página se recargará automáticamente
+    }
+  };
+
+  const handleResetApiUrl = () => {
+    localStorage.removeItem('API_URL');
+    window.location.reload();
+  };
+
   // Múltiples iconos flotantes distribuidos por la pantalla
   const floatingIcons = [
     { Icon: Plus, delay: 0, duration: 3, top: '10%', left: '15%' },
@@ -138,6 +153,61 @@ const Login = () => {
 
       {/* Gradient Overlay for depth */}
       <div className="absolute inset-0 bg-gradient-to-t from-blue-500/20 to-transparent pointer-events-none" />
+
+      {/* Config Button (esquina superior derecha) */}
+      <motion.button
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        onClick={() => setShowConfig(!showConfig)}
+        className="absolute top-4 right-4 z-20 p-2 bg-white/20 backdrop-blur-sm rounded-full hover:bg-white/30 transition-colors"
+        title="Configuración del servidor"
+      >
+        <Settings className="w-5 h-5 text-white" />
+      </motion.button>
+
+      {/* Config Panel */}
+      <AnimatePresence>
+        {showConfig && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className="absolute top-16 right-4 z-20 bg-white rounded-xl shadow-xl p-4 w-80"
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Globe className="w-5 h-5 text-indigo-600" />
+              <h3 className="font-semibold text-gray-800">Configuración API</h3>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Para demos remotas, ingresa la URL del túnel del backend.
+            </p>
+            <input
+              type="url"
+              value={apiUrl}
+              onChange={(e) => setApiUrlState(e.target.value)}
+              placeholder="https://xxx.trycloudflare.com/api"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+            <div className="flex gap-2 mt-3">
+              <button
+                onClick={handleSaveApiUrl}
+                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+              >
+                Guardar
+              </button>
+              <button
+                onClick={handleResetApiUrl}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-2">
+              Actual: {getConfiguredApiUrl()}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Login Card */}
       <motion.div
