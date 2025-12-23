@@ -78,12 +78,15 @@ const authService = {
     }
   },
 
-  // Obtener usuario actual
+  // Obtener usuario actual desde el servidor
   getCurrentUser: async () => {
     try {
       const response = await api.get('/auth/me');
       if (response.data.success) {
-        return { success: true, user: response.data.data.user };
+        const user = response.data.data.user;
+        // Actualizar localStorage
+        localStorage.setItem('user', JSON.stringify(user));
+        return { success: true, user };
       }
       return { success: false };
     } catch (error) {
@@ -108,6 +111,121 @@ const authService = {
   getRememberedEmail: () => {
     return localStorage.getItem('rememberedEmail') || '';
   },
+
+  // Solicitar restablecimiento de contraseña
+  forgotPassword: async (email) => {
+    try {
+      const response = await api.post('/auth/forgot-password', { email });
+      return response.data;
+    } catch (error) {
+      console.error('Error en forgotPassword:', error);
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al procesar la solicitud'
+      };
+    }
+  },
+
+  // Restablecer contraseña con token
+  resetPassword: async (token, newPassword) => {
+    try {
+      const response = await api.post('/auth/reset-password', { token, newPassword });
+      return response.data;
+    } catch (error) {
+      console.error('Error en resetPassword:', error);
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al restablecer la contraseña'
+      };
+    }
+  },
+
+  // Cambiar contraseña (usuario autenticado)
+  changePassword: async (currentPassword, newPassword) => {
+    try {
+      const response = await api.post('/auth/change-password', { currentPassword, newPassword });
+      return response.data;
+    } catch (error) {
+      console.error('Error en changePassword:', error);
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al cambiar la contraseña'
+      };
+    }
+  },
+
+  // Actualizar perfil
+  updateProfile: async (data) => {
+    try {
+      const response = await api.put('/auth/profile', data);
+      if (response.data.success) {
+        // Actualizar localStorage
+        localStorage.setItem('user', JSON.stringify(response.data.data.user));
+      }
+      return response.data;
+    } catch (error) {
+      console.error('Error en updateProfile:', error);
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al actualizar el perfil'
+      };
+    }
+  },
+
+  // Subir avatar
+  uploadAvatar: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await api.post('/auth/upload-avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        // Actualizar usuario en localStorage
+        const user = authService.getStoredUser();
+        if (user) {
+          user.avatar = response.data.data.avatar;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error en uploadAvatar:', error);
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al subir el avatar'
+      };
+    }
+  },
+
+  // Eliminar avatar
+  deleteAvatar: async () => {
+    try {
+      const response = await api.delete('/auth/avatar');
+
+      if (response.data.success) {
+        // Actualizar usuario en localStorage
+        const user = authService.getStoredUser();
+        if (user) {
+          user.avatar = null;
+          localStorage.setItem('user', JSON.stringify(user));
+        }
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error('Error en deleteAvatar:', error);
+      return {
+        success: false,
+        message: error.response?.data?.detail || 'Error al eliminar el avatar'
+      };
+    }
+  }
 };
 
 export default authService;

@@ -29,10 +29,18 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const refreshUser = async () => {
+    const result = await authService.getCurrentUser();
+    if (result.success) {
+      setUser(result.user);
+    }
+  };
+
   const value = {
     user,
     login,
     logout,
+    refreshUser,
     loading,
     isAuthenticated: authService.isAuthenticated()
   };

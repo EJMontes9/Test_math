@@ -7,7 +7,9 @@ from datetime import datetime
 from app.database import get_db
 from app.models import (
     User, UserRole, GameSession, Exercise, ExerciseAttempt,
-    StudentTopicProgress, MathTopic, ExerciseDifficulty, Enrollment, Paralelo
+    StudentTopicProgress, MathTopic, ExerciseDifficulty, Enrollment, Paralelo,
+    Goal, StudentGoal, GoalStatus, GoalType,
+    Challenge, ChallengeParticipant, ChallengeStatus
 )
 from app import schemas
 from app.schemas import APIResponse
@@ -25,6 +27,90 @@ def require_student(current_user: User = Depends(get_current_user)):
     if current_user.role not in [UserRole.student, UserRole.admin]:
         raise HTTPException(status_code=403, detail="Acceso denegado. Se requiere rol de estudiante")
     return current_user
+
+
+def update_student_goals_progress(student_id: UUID, topic: MathTopic, is_correct: bool, db: Session):
+    """Actualizar el progreso de las metas del estudiante despues de cada ejercicio"""
+    now = datetime.now()
+
+    # Obtener metas activas del estudiante
+    active_goals = db.query(StudentGoal).join(Goal).filter(
+        StudentGoal.student_id == student_id,
+        StudentGoal.status == GoalStatus.active,
+        Goal.is_active == True,
+        Goal.start_date <= now,
+        Goal.end_date >= now
+    ).all()
+
+    for student_goal in active_goals:
+        goal = student_goal.goal
+        updated = False
+
+        if goal.goal_type == GoalType.exercises:
+            # Meta de ejercicios completados: +1 por cada ejercicio
+            student_goal.current_value += 1
+            updated = True
+
+        elif goal.goal_type == GoalType.accuracy:
+            # Meta de precision: calcular % de aciertos
+            total_attempts = db.query(func.count(ExerciseAttempt.id)).filter(
+                ExerciseAttempt.student_id == student_id
+            ).scalar() or 0
+            correct_attempts = db.query(func.count(ExerciseAttempt.id)).filter(
+                ExerciseAttempt.student_id == student_id,
+                ExerciseAttempt.is_correct == True
+            ).scalar() or 0
+            if total_attempts > 0:
+                student_goal.current_value = int((correct_attempts / total_attempts) * 100)
+                updated = True
+
+        elif goal.goal_type == GoalType.points:
+            # Meta de puntos: sumar puntos totales de sesiones
+            total_points = db.query(func.sum(GameSession.total_score)).filter(
+                GameSession.student_id == student_id
+            ).scalar() or 0
+            student_goal.current_value = total_points
+            updated = True
+
+        elif goal.goal_type == GoalType.streak:
+            # Meta de racha: calcular respuestas correctas consecutivas
+            if is_correct:
+                # Obtener ultimos intentos para calcular racha actual
+                recent_attempts = db.query(ExerciseAttempt).filter(
+                    ExerciseAttempt.student_id == student_id
+                ).order_by(ExerciseAttempt.attempted_at.desc()).limit(100).all()
+
+                streak = 0
+                for attempt in recent_attempts:
+                    if attempt.is_correct:
+                        streak += 1
+                    else:
+                        break
+
+                # Solo actualizar si la racha actual es mayor
+                if streak > student_goal.current_value:
+                    student_goal.current_value = streak
+                    updated = True
+
+        elif goal.goal_type == GoalType.topic_mastery:
+            # Meta de dominio de tema: verificar si el tema coincide
+            if goal.topic == topic:
+                topic_progress = db.query(StudentTopicProgress).filter(
+                    StudentTopicProgress.student_id == student_id,
+                    StudentTopicProgress.topic == topic
+                ).first()
+                if topic_progress:
+                    # Usar nivel de maestria (0-100)
+                    student_goal.current_value = int(topic_progress.mastery_level * 100)
+                    updated = True
+
+        # Verificar si la meta fue completada
+        if updated and student_goal.current_value >= goal.target_value:
+            student_goal.status = GoalStatus.completed
+            student_goal.completed_at = now
+            student_goal.points_earned = goal.reward_points
+
+    db.flush()
 
 
 @router.post("/game/start", response_model=APIResponse)
@@ -190,6 +276,14 @@ async def submit_answer(
     # Actualizar progreso del tema
     AIRecommendations.update_topic_progress(
         str(current_user.id),
+        exercise.topic,
+        is_correct,
+        db
+    )
+
+    # Actualizar progreso de metas del estudiante
+    update_student_goals_progress(
+        current_user.id,
         exercise.topic,
         is_correct,
         db
@@ -452,3 +546,644 @@ def _calculate_exercise_points(difficulty: ExerciseDifficulty, current_score: in
         points = int(points * 1.15)
 
     return points
+
+
+# ==================== ENDPOINTS DE DESAFIOS ====================
+
+@router.get("/challenges", response_model=APIResponse)
+async def get_challenges(
+    filter: Optional[str] = "available",
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Obtener desafios disponibles para el estudiante"""
+    now = datetime.now()
+
+    # Obtener paralelo del estudiante
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == current_user.id,
+        Enrollment.is_active == True
+    ).first()
+
+    paralelo_id = enrollment.paralelo_id if enrollment else None
+
+    # Base query: desafios activos del paralelo del estudiante o abiertos a todos
+    query = db.query(Challenge).filter(
+        Challenge.is_active == True
+    )
+
+    if paralelo_id:
+        query = query.filter(
+            (Challenge.paralelo_id == paralelo_id) | (Challenge.paralelo_id == None)
+        )
+    else:
+        query = query.filter(Challenge.paralelo_id == None)
+
+    if filter == "available":
+        # Desafios pendientes o activos donde el estudiante puede unirse
+        query = query.filter(Challenge.status.in_([ChallengeStatus.pending, ChallengeStatus.active]))
+    elif filter == "my":
+        # Solo desafios donde el estudiante ya esta participando
+        my_challenge_ids = db.query(ChallengeParticipant.challenge_id).filter(
+            ChallengeParticipant.student_id == current_user.id
+        ).subquery()
+        query = query.filter(Challenge.id.in_(my_challenge_ids))
+    elif filter == "completed":
+        # Desafios finalizados donde el estudiante participo
+        my_challenge_ids = db.query(ChallengeParticipant.challenge_id).filter(
+            ChallengeParticipant.student_id == current_user.id
+        ).subquery()
+        query = query.filter(
+            Challenge.id.in_(my_challenge_ids),
+            Challenge.status == ChallengeStatus.completed
+        )
+
+    challenges = query.order_by(desc(Challenge.created_at)).all()
+
+    challenges_data = []
+    for challenge in challenges:
+        # Obtener participantes
+        participants = db.query(ChallengeParticipant).filter(
+            ChallengeParticipant.challenge_id == challenge.id
+        ).order_by(desc(ChallengeParticipant.score)).all()
+
+        # Verificar si el estudiante ya se unio
+        has_joined = any(p.student_id == current_user.id for p in participants)
+        is_winner = challenge.winner_id == current_user.id if challenge.winner_id else False
+
+        participants_data = []
+        for p in participants:
+            student = p.student
+            participants_data.append({
+                "name": f"{student.first_name} {student.last_name}",
+                "score": p.score,
+                "isMe": p.student_id == current_user.id,
+                "isWinner": challenge.winner_id == p.student_id if challenge.winner_id else False
+            })
+
+        # Nombre del tema
+        topic_names = {
+            "operations": "Operaciones Basicas",
+            "combined_operations": "Operaciones Combinadas",
+            "linear_equations": "Ecuaciones Lineales",
+            "quadratic_equations": "Ecuaciones Cuadraticas",
+            "fractions": "Fracciones",
+            "percentages": "Porcentajes",
+            "geometry": "Geometria",
+            "algebra": "Algebra"
+        }
+
+        challenges_data.append({
+            "id": str(challenge.id),
+            "title": challenge.title,
+            "description": challenge.description,
+            "topic": challenge.topic.value if challenge.topic else None,
+            "topicName": topic_names.get(challenge.topic.value, challenge.topic.value) if challenge.topic else "Tema Mixto",
+            "numExercises": challenge.num_exercises,
+            "timeLimit": challenge.time_limit,
+            "maxParticipants": challenge.max_participants,
+            "status": challenge.status.value,
+            "participantCount": len(participants),
+            "participants": participants_data,
+            "hasJoined": has_joined,
+            "isWinner": is_winner
+        })
+
+    return APIResponse(success=True, data=challenges_data)
+
+
+@router.post("/challenges/{challenge_id}/join", response_model=APIResponse)
+async def join_challenge(
+    challenge_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Unirse a un desafio"""
+    # Verificar que el desafio existe y esta disponible
+    challenge = db.query(Challenge).filter(
+        Challenge.id == challenge_id,
+        Challenge.is_active == True,
+        Challenge.status.in_([ChallengeStatus.pending, ChallengeStatus.active])
+    ).first()
+
+    if not challenge:
+        raise HTTPException(status_code=404, detail="Desafio no encontrado o no disponible")
+
+    # Verificar que el estudiante pertenece al paralelo del desafio (si aplica)
+    if challenge.paralelo_id:
+        enrollment = db.query(Enrollment).filter(
+            Enrollment.student_id == current_user.id,
+            Enrollment.paralelo_id == challenge.paralelo_id,
+            Enrollment.is_active == True
+        ).first()
+
+        if not enrollment:
+            raise HTTPException(status_code=403, detail="No perteneces al paralelo de este desafio")
+
+    # Verificar que no esta ya participando
+    existing = db.query(ChallengeParticipant).filter(
+        ChallengeParticipant.challenge_id == challenge_id,
+        ChallengeParticipant.student_id == current_user.id
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya estas participando en este desafio")
+
+    # Verificar limite de participantes
+    participant_count = db.query(ChallengeParticipant).filter(
+        ChallengeParticipant.challenge_id == challenge_id
+    ).count()
+
+    if participant_count >= challenge.max_participants:
+        raise HTTPException(status_code=400, detail="El desafio ya tiene el maximo de participantes")
+
+    # Crear participacion
+    participant = ChallengeParticipant(
+        challenge_id=challenge_id,
+        student_id=current_user.id
+    )
+    db.add(participant)
+    db.commit()
+
+    return APIResponse(success=True, message="Te has unido al desafio exitosamente")
+
+
+@router.get("/challenges/{challenge_id}/exercise", response_model=APIResponse)
+async def get_challenge_exercise(
+    challenge_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Obtener el siguiente ejercicio de un desafio"""
+    # Verificar participacion
+    participant = db.query(ChallengeParticipant).filter(
+        ChallengeParticipant.challenge_id == challenge_id,
+        ChallengeParticipant.student_id == current_user.id
+    ).first()
+
+    if not participant:
+        raise HTTPException(status_code=403, detail="No estas participando en este desafio")
+
+    # Verificar desafio activo
+    challenge = db.query(Challenge).filter(
+        Challenge.id == challenge_id,
+        Challenge.status == ChallengeStatus.active
+    ).first()
+
+    if not challenge:
+        raise HTTPException(status_code=400, detail="El desafio no esta activo")
+
+    # Verificar si ya termino sus ejercicios
+    if participant.exercises_completed >= challenge.num_exercises:
+        if not participant.has_finished:
+            participant.has_finished = True
+            participant.finished_at = datetime.now()
+            db.commit()
+        return APIResponse(
+            success=True,
+            data={
+                "finished": True,
+                "score": participant.score,
+                "correct_answers": participant.correct_answers,
+                "wrong_answers": participant.wrong_answers
+            }
+        )
+
+    # Generar ejercicio
+    topic = challenge.topic if challenge.topic else random.choice(list(MathTopic))
+    difficulty = challenge.difficulty if challenge.difficulty else ExerciseDifficulty.medium
+
+    exercise_data = ExerciseGenerator.generate_exercise(topic, difficulty, participant.score)
+
+    # Guardar ejercicio
+    exercise = Exercise(
+        title=exercise_data["title"],
+        question=exercise_data["question"],
+        exercise_type="multiple_choice",
+        difficulty=difficulty,
+        topic=topic,
+        correct_answer=exercise_data["correct_answer"],
+        options=exercise_data["options"],
+        points=_calculate_exercise_points(difficulty, 0),
+        is_practice=False,
+        is_active=True
+    )
+
+    db.add(exercise)
+    db.commit()
+    db.refresh(exercise)
+
+    return APIResponse(
+        success=True,
+        data={
+            "finished": False,
+            "exercise_id": str(exercise.id),
+            "title": exercise.title,
+            "question": exercise.question,
+            "options": json.loads(exercise.options) if exercise.options else [],
+            "topic": exercise.topic.value,
+            "difficulty": exercise.difficulty.value,
+            "possible_points": exercise.points,
+            "current_exercise": participant.exercises_completed + 1,
+            "total_exercises": challenge.num_exercises,
+            "current_score": participant.score
+        }
+    )
+
+
+@router.post("/challenges/{challenge_id}/submit-answer", response_model=APIResponse)
+async def submit_challenge_answer(
+    challenge_id: UUID,
+    request: schemas.SubmitAnswerRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Enviar respuesta de un ejercicio de desafio"""
+    # Verificar participacion
+    participant = db.query(ChallengeParticipant).filter(
+        ChallengeParticipant.challenge_id == challenge_id,
+        ChallengeParticipant.student_id == current_user.id
+    ).first()
+
+    if not participant:
+        raise HTTPException(status_code=403, detail="No estas participando en este desafio")
+
+    # Verificar desafio activo
+    challenge = db.query(Challenge).filter(
+        Challenge.id == challenge_id,
+        Challenge.status == ChallengeStatus.active
+    ).first()
+
+    if not challenge:
+        raise HTTPException(status_code=400, detail="El desafio no esta activo")
+
+    # Obtener ejercicio
+    exercise = db.query(Exercise).filter(Exercise.id == request.exercise_id).first()
+
+    if not exercise:
+        raise HTTPException(status_code=404, detail="Ejercicio no encontrado")
+
+    # Verificar respuesta
+    is_correct = request.answer.strip() == exercise.correct_answer.strip()
+
+    # Calcular puntos
+    points_earned, points_lost = ExerciseGenerator.calculate_points(
+        exercise.difficulty,
+        is_correct,
+        request.time_taken,
+        participant.score
+    )
+
+    # Actualizar participacion
+    participant.exercises_completed += 1
+    participant.time_taken += request.time_taken
+
+    if is_correct:
+        participant.correct_answers += 1
+        participant.score += points_earned
+    else:
+        participant.wrong_answers += 1
+
+    # Verificar si termino
+    if participant.exercises_completed >= challenge.num_exercises:
+        participant.has_finished = True
+        participant.finished_at = datetime.now()
+
+        # Verificar si todos terminaron para determinar ganador
+        all_participants = db.query(ChallengeParticipant).filter(
+            ChallengeParticipant.challenge_id == challenge_id
+        ).all()
+
+        all_finished = all(p.has_finished for p in all_participants)
+
+        if all_finished:
+            # Determinar ganador
+            winner = max(all_participants, key=lambda p: p.score)
+            challenge.status = ChallengeStatus.completed
+            challenge.winner_id = winner.student_id
+            challenge.end_time = datetime.now()
+
+    # Guardar intento
+    attempt = ExerciseAttempt(
+        exercise_id=exercise.id,
+        student_id=current_user.id,
+        student_answer=request.answer,
+        is_correct=is_correct,
+        time_taken=request.time_taken,
+        points_earned=points_earned if is_correct else 0,
+        points_lost=points_lost if not is_correct else 0
+    )
+
+    db.add(attempt)
+    db.commit()
+
+    return APIResponse(
+        success=True,
+        data={
+            "is_correct": is_correct,
+            "correct_answer": exercise.correct_answer,
+            "points_earned": points_earned if is_correct else 0,
+            "new_score": participant.score,
+            "exercises_completed": participant.exercises_completed,
+            "total_exercises": challenge.num_exercises,
+            "has_finished": participant.has_finished
+        }
+    )
+
+
+# ==================== ENDPOINTS DE METAS ====================
+
+@router.get("/goals", response_model=APIResponse)
+async def get_student_goals(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Obtener metas del estudiante"""
+    now = datetime.now()
+
+    # Obtener paralelo del estudiante
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == current_user.id,
+        Enrollment.is_active == True
+    ).first()
+
+    paralelo_id = enrollment.paralelo_id if enrollment else None
+
+    # Obtener metas activas disponibles para el estudiante
+    query = db.query(Goal).filter(
+        Goal.is_active == True
+    )
+
+    if paralelo_id:
+        query = query.filter(
+            (Goal.paralelo_id == paralelo_id) | (Goal.paralelo_id == None)
+        )
+    else:
+        query = query.filter(Goal.paralelo_id == None)
+
+    goals = query.order_by(desc(Goal.created_at)).all()
+
+    goals_data = []
+    for goal in goals:
+        # Buscar o crear StudentGoal
+        student_goal = db.query(StudentGoal).filter(
+            StudentGoal.goal_id == goal.id,
+            StudentGoal.student_id == current_user.id
+        ).first()
+
+        if not student_goal:
+            # Crear registro para este estudiante si la meta esta dentro del periodo
+            if goal.start_date <= now <= goal.end_date:
+                student_goal = StudentGoal(
+                    goal_id=goal.id,
+                    student_id=current_user.id,
+                    current_value=0,
+                    status=GoalStatus.active
+                )
+                db.add(student_goal)
+                db.flush()
+
+        if student_goal:
+            # Verificar si expiro
+            if goal.end_date < now and student_goal.status == GoalStatus.active:
+                student_goal.status = GoalStatus.expired
+                db.flush()
+
+            # Filtrar por status si se especifica
+            if status:
+                if status == "active" and student_goal.status != GoalStatus.active:
+                    continue
+                elif status == "completed" and student_goal.status != GoalStatus.completed:
+                    continue
+                elif status == "expired" and student_goal.status != GoalStatus.expired:
+                    continue
+
+            # Nombre del tipo de meta
+            goal_type_names = {
+                "exercises": "Ejercicios Completados",
+                "accuracy": "Precision",
+                "points": "Puntos",
+                "streak": "Racha de Aciertos",
+                "topic_mastery": "Dominio de Tema"
+            }
+
+            # Nombre del tema
+            topic_names = {
+                "operations": "Operaciones Basicas",
+                "combined_operations": "Operaciones Combinadas",
+                "linear_equations": "Ecuaciones Lineales",
+                "quadratic_equations": "Ecuaciones Cuadraticas",
+                "fractions": "Fracciones",
+                "percentages": "Porcentajes",
+                "geometry": "Geometria",
+                "algebra": "Algebra"
+            }
+
+            progress = min(100, (student_goal.current_value / goal.target_value * 100)) if goal.target_value > 0 else 0
+
+            goals_data.append({
+                "id": str(goal.id),
+                "studentGoalId": str(student_goal.id),
+                "title": goal.title,
+                "description": goal.description,
+                "goalType": goal.goal_type.value,
+                "goalTypeName": goal_type_names.get(goal.goal_type.value, goal.goal_type.value),
+                "topic": goal.topic.value if goal.topic else None,
+                "topicName": topic_names.get(goal.topic.value, goal.topic.value) if goal.topic else None,
+                "targetValue": goal.target_value,
+                "currentValue": student_goal.current_value,
+                "progress": round(progress, 1),
+                "rewardPoints": goal.reward_points,
+                "startDate": goal.start_date.isoformat(),
+                "endDate": goal.end_date.isoformat(),
+                "status": student_goal.status.value,
+                "completedAt": student_goal.completed_at.isoformat() if student_goal.completed_at else None,
+                "pointsEarned": student_goal.points_earned or 0
+            })
+
+    db.commit()
+
+    return APIResponse(success=True, data=goals_data)
+
+
+# ==================== ENDPOINTS DE INSIGNIAS ====================
+
+@router.get("/badges", response_model=APIResponse)
+async def get_student_badges(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Obtener insignias del estudiante"""
+    from app.models import Badge, StudentBadge
+
+    # Obtener todas las insignias activas
+    badges = db.query(Badge).filter(Badge.is_active == True).all()
+
+    badges_data = []
+    for badge in badges:
+        # Verificar si el estudiante tiene esta insignia
+        student_badge = db.query(StudentBadge).filter(
+            StudentBadge.badge_id == badge.id,
+            StudentBadge.student_id == current_user.id
+        ).first()
+
+        badges_data.append({
+            "id": str(badge.id),
+            "name": badge.name,
+            "description": badge.description,
+            "icon": badge.icon,
+            "category": badge.category.value if badge.category else "general",
+            "requirement": badge.requirement,
+            "requirementValue": badge.requirement_value,
+            "points": badge.points,
+            "owned": student_badge is not None,
+            "equipped": student_badge.is_equipped if student_badge else False,
+            "earnedAt": student_badge.earned_at.isoformat() if student_badge else None
+        })
+
+    # Ordenar: primero las que tiene, luego por categoria
+    badges_data.sort(key=lambda x: (not x["owned"], x["category"]))
+
+    return APIResponse(success=True, data=badges_data)
+
+
+@router.post("/badges/{badge_id}/equip", response_model=APIResponse)
+async def equip_badge(
+    badge_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Equipar una insignia"""
+    from app.models import StudentBadge
+
+    # Verificar que el estudiante tiene la insignia
+    student_badge = db.query(StudentBadge).filter(
+        StudentBadge.badge_id == badge_id,
+        StudentBadge.student_id == current_user.id
+    ).first()
+
+    if not student_badge:
+        raise HTTPException(status_code=404, detail="No tienes esta insignia")
+
+    # Desequipar todas las demas
+    db.query(StudentBadge).filter(
+        StudentBadge.student_id == current_user.id,
+        StudentBadge.is_equipped == True
+    ).update({"is_equipped": False})
+
+    # Equipar esta
+    student_badge.is_equipped = True
+    db.commit()
+
+    return APIResponse(success=True, message="Insignia equipada")
+
+
+@router.post("/badges/{badge_id}/unequip", response_model=APIResponse)
+async def unequip_badge(
+    badge_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Desequipar una insignia"""
+    from app.models import StudentBadge
+
+    student_badge = db.query(StudentBadge).filter(
+        StudentBadge.badge_id == badge_id,
+        StudentBadge.student_id == current_user.id
+    ).first()
+
+    if not student_badge:
+        raise HTTPException(status_code=404, detail="No tienes esta insignia")
+
+    student_badge.is_equipped = False
+    db.commit()
+
+    return APIResponse(success=True, message="Insignia desequipada")
+
+
+# ==================== ENDPOINTS DE RECURSOS ====================
+
+@router.get("/resources", response_model=APIResponse)
+async def get_student_resources(
+    topic: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Obtener recursos disponibles para el estudiante"""
+    from app.models import Resource, ResourceType
+
+    # Obtener paralelo del estudiante
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == current_user.id,
+        Enrollment.is_active == True
+    ).first()
+
+    paralelo_id = enrollment.paralelo_id if enrollment else None
+
+    # Recursos del paralelo del estudiante o publicos
+    query = db.query(Resource).filter(Resource.is_active == True)
+
+    if paralelo_id:
+        query = query.filter(
+            (Resource.paralelo_id == paralelo_id) | (Resource.paralelo_id == None)
+        )
+    else:
+        query = query.filter(Resource.paralelo_id == None)
+
+    if topic:
+        query = query.filter(Resource.topic == MathTopic(topic))
+    if resource_type:
+        query = query.filter(Resource.resource_type == ResourceType(resource_type))
+
+    resources = query.order_by(desc(Resource.created_at)).all()
+
+    # Nombre del tema
+    topic_names = {
+        "operations": "Operaciones Basicas",
+        "combined_operations": "Operaciones Combinadas",
+        "linear_equations": "Ecuaciones Lineales",
+        "quadratic_equations": "Ecuaciones Cuadraticas",
+        "fractions": "Fracciones",
+        "percentages": "Porcentajes",
+        "geometry": "Geometria",
+        "algebra": "Algebra"
+    }
+
+    resources_data = []
+    for resource in resources:
+        resources_data.append({
+            "id": str(resource.id),
+            "title": resource.title,
+            "description": resource.description,
+            "url": resource.url,
+            "resourceType": resource.resource_type.value,
+            "topic": resource.topic.value if resource.topic else None,
+            "topicName": topic_names.get(resource.topic.value, resource.topic.value) if resource.topic else None,
+            "viewCount": resource.view_count,
+            "teacherName": f"{resource.teacher.first_name} {resource.teacher.last_name}"
+        })
+
+    return APIResponse(success=True, data=resources_data)
+
+
+@router.post("/resources/{resource_id}/view", response_model=APIResponse)
+async def register_resource_view(
+    resource_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_student)
+):
+    """Registrar vista de un recurso"""
+    from app.models import Resource
+
+    resource = db.query(Resource).filter(
+        Resource.id == resource_id,
+        Resource.is_active == True
+    ).first()
+
+    if resource:
+        resource.view_count += 1
+        db.commit()
+
+    return APIResponse(success=True, message="Vista registrada")
