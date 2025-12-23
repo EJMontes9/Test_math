@@ -42,7 +42,8 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshUser,
     loading,
-    isAuthenticated: authService.isAuthenticated()
+    // isAuthenticated ahora depende del estado user, no solo del localStorage
+    isAuthenticated: !!user
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Calculator, Lock, Mail, LogIn, Brain, Plus, Minus, X, Divide, AlertCircle, CheckCircle, Settings, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import authService from '../services/authService';
 import { setApiUrl, getConfiguredApiUrl } from '../services/api';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login: authLogin } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
@@ -53,8 +55,9 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log('📡 Llamando a authService.login...');
-      const result = await authService.login(email, password, rememberMe);
+      console.log('📡 Llamando a authLogin del contexto...');
+      // Usar la función login del contexto para actualizar el estado global
+      const result = await authLogin(email, password, rememberMe);
       console.log('📥 Respuesta del servidor:', result);
 
       if (result.success) {
@@ -71,10 +74,10 @@ const Login = () => {
             ? '/admin/dashboard'
             : result.user.role === 'teacher'
             ? '/teacher/dashboard'
-            : '/student/dashboard'; // Para futuros estudiantes
+            : '/student/dashboard';
           console.log('🚀 Redirigiendo a:', redirectPath);
           navigate(redirectPath);
-        }, 1500);
+        }, 1000); // Reducido a 1 segundo
       } else {
         console.error('❌ Login falló:', result.message);
         setError(result.message || 'Credenciales incorrectas');
