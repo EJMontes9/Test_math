@@ -15,17 +15,17 @@ import {
   Target,
   Swords
 } from 'lucide-react';
-import authService from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 
 const Sidebar = ({ isOpen, setIsOpen }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const user = authService.getStoredUser();
+  const { user, logout } = useAuth();
   const { settings } = useSettings();
 
   const handleLogout = () => {
-    authService.logout();
+    logout();
     navigate('/login');
   };
 

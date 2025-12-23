@@ -79,6 +79,12 @@ uvicorn app.main:app --reload --port 3000
 # Disponible en http://localhost:3000
 ```
 
+
+## Creación de usuarios por defecto
+```bash
+docker-compose exec backend python create_sample_data.py
+```
+
 ## 🔐 Credenciales de Acceso
 
 Ver archivo `CREDENCIALES.md` para usuarios de prueba.

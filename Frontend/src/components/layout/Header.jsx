@@ -1,8 +1,8 @@
 import { Menu, Bell, Search } from 'lucide-react';
-import authService from '../../services/authService';
+import { useAuth } from '../../context/AuthContext';
 
 const Header = ({ toggleSidebar }) => {
-  const user = authService.getStoredUser();
+  const { user } = useAuth();
 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-30">
