@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Trophy, Clock, Users, Play, CheckCircle, Loader2, Crown, Target } from 'lucide-react';
+import { Swords, Trophy, Clock, Users, Play, CheckCircle, Loader2, Crown, Target, Zap } from 'lucide-react';
 import studentService from '../../services/studentService';
 
 export default function Challenges() {
@@ -38,7 +38,7 @@ export default function Challenges() {
       }
     } catch (error) {
       console.error('Error joining challenge:', error);
-      alert(error.message || 'Error al unirse al desafio');
+      alert(error.message || 'Error al unirse al versus');
     } finally {
       setJoining(null);
     }
@@ -60,7 +60,7 @@ export default function Challenges() {
   // Estadisticas
   const availableChallenges = challenges.filter(c => c.status === 'pending' || c.status === 'active').length;
   const completedChallenges = challenges.filter(c => c.status === 'completed').length;
-  const wonChallenges = challenges.filter(c => c.status === 'completed' && c.isWinner).length;
+  const wonChallenges = challenges.filter(c => c.status === 'completed' && c.isWinnerParalelo).length;
 
   if (loading) {
     return (
@@ -74,8 +74,8 @@ export default function Challenges() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-800">Desafios</h1>
-        <p className="text-gray-500">Compite contra otros estudiantes</p>
+        <h1 className="text-2xl font-bold text-gray-800">Versus</h1>
+        <p className="text-gray-500">Compite con tu paralelo contra otros paralelos</p>
       </div>
 
       {/* Stats */}
@@ -86,7 +86,7 @@ export default function Challenges() {
               <Swords className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-sm text-gray-500">Disponibles</p>
+              <p className="text-sm text-gray-500">Activos</p>
               <p className="text-xl font-bold text-gray-900">{availableChallenges}</p>
             </div>
           </div>
@@ -123,7 +123,7 @@ export default function Challenges() {
             filter === 'available' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600'
           }`}
         >
-          Disponibles
+          Activos
         </button>
         <button
           onClick={() => setFilter('my')}
@@ -131,7 +131,7 @@ export default function Challenges() {
             filter === 'my' ? 'bg-white text-indigo-600 shadow' : 'text-gray-600'
           }`}
         >
-          Mis Desafios
+          Mis Versus
         </button>
         <button
           onClick={() => setFilter('completed')}
@@ -143,25 +143,27 @@ export default function Challenges() {
         </button>
       </div>
 
-      {/* Lista de desafios */}
+      {/* Lista de versus */}
       {challenges.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-xl">
           <Swords className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-gray-700 mb-2">No hay desafios</h3>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">No hay versus</h3>
           <p className="text-gray-500">
             {filter === 'available'
-              ? 'No hay desafios disponibles en este momento'
+              ? 'No hay versus activos en este momento'
               : filter === 'my'
-              ? 'No te has unido a ningun desafio'
-              : 'No has completado ningun desafio'}
+              ? 'No te has unido a ningun versus'
+              : 'No hay versus finalizados'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-4">
           <AnimatePresence>
             {challenges.map((challenge, index) => {
               const statusInfo = getStatusInfo(challenge.status);
               const StatusIcon = statusInfo.icon;
+              const paralelo1 = challenge.paralelo1;
+              const paralelo2 = challenge.paralelo2;
 
               return (
                 <motion.div
@@ -171,16 +173,16 @@ export default function Challenges() {
                   exit={{ opacity: 0, y: -20 }}
                   transition={{ delay: index * 0.05 }}
                   className={`bg-white rounded-xl p-5 border shadow-sm ${
-                    challenge.isWinner ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'
+                    challenge.isWinnerParalelo ? 'border-yellow-300 bg-yellow-50/30' : 'border-gray-100'
                   }`}
                 >
                   {/* Header */}
-                  <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center gap-3">
                       <div className={`p-2 rounded-lg ${
-                        challenge.isWinner ? 'bg-yellow-100' : 'bg-indigo-100'
+                        challenge.isWinnerParalelo ? 'bg-yellow-100' : 'bg-indigo-100'
                       }`}>
-                        {challenge.isWinner ? (
+                        {challenge.isWinnerParalelo ? (
                           <Crown className="w-5 h-5 text-yellow-600" />
                         ) : (
                           <Swords className="w-5 h-5 text-indigo-600" />
@@ -189,7 +191,7 @@ export default function Challenges() {
                       <div>
                         <h3 className="font-bold text-gray-900">{challenge.title}</h3>
                         <p className="text-xs text-gray-500">
-                          {challenge.topic ? challenge.topicName : 'Tema mixto'}
+                          {challenge.topicName || 'Tema mixto'}
                         </p>
                       </div>
                     </div>
@@ -199,8 +201,92 @@ export default function Challenges() {
                   </div>
 
                   {challenge.description && (
-                    <p className="text-sm text-gray-600 mb-3">{challenge.description}</p>
+                    <p className="text-sm text-gray-600 mb-4">{challenge.description}</p>
                   )}
+
+                  {/* Versus Card - Paralelo vs Paralelo */}
+                  <div className="bg-gradient-to-r from-blue-50 via-gray-50 to-red-50 rounded-xl p-4 mb-4">
+                    <div className="flex items-center justify-between">
+                      {/* Paralelo 1 */}
+                      <div className={`flex-1 text-center ${paralelo1?.isMyParalelo ? 'relative' : ''}`}>
+                        {paralelo1?.isMyParalelo && (
+                          <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">
+                            Tu paralelo
+                          </span>
+                        )}
+                        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-2 ${
+                          paralelo1?.isWinner ? 'bg-yellow-200' : paralelo1?.isMyParalelo ? 'bg-blue-200' : 'bg-gray-200'
+                        }`}>
+                          {paralelo1?.isWinner && <Crown className="w-6 h-6 text-yellow-600" />}
+                          {!paralelo1?.isWinner && <Users className="w-6 h-6 text-gray-600" />}
+                        </div>
+                        <h4 className={`font-bold ${paralelo1?.isMyParalelo ? 'text-blue-700' : 'text-gray-800'}`}>
+                          {paralelo1?.name || 'Sin asignar'}
+                        </h4>
+                        <p className={`text-2xl font-bold mt-1 ${
+                          paralelo1?.isWinner ? 'text-yellow-600' : paralelo1?.isMyParalelo ? 'text-blue-600' : 'text-gray-700'
+                        }`}>
+                          {paralelo1?.score || 0}
+                        </p>
+                        <p className="text-xs text-gray-500">{paralelo1?.participantCount || 0} participantes</p>
+                      </div>
+
+                      {/* VS Badge */}
+                      <div className="px-4">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                          <span className="text-white font-bold text-sm">VS</span>
+                        </div>
+                      </div>
+
+                      {/* Paralelo 2 */}
+                      <div className={`flex-1 text-center ${paralelo2?.isMyParalelo ? 'relative' : ''}`}>
+                        {paralelo2?.isMyParalelo && (
+                          <span className="absolute -top-2 left-1/2 transform -translate-x-1/2 bg-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">
+                            Tu paralelo
+                          </span>
+                        )}
+                        <div className={`inline-flex items-center justify-center w-12 h-12 rounded-full mb-2 ${
+                          paralelo2?.isWinner ? 'bg-yellow-200' : paralelo2?.isMyParalelo ? 'bg-red-200' : 'bg-gray-200'
+                        }`}>
+                          {paralelo2?.isWinner && <Crown className="w-6 h-6 text-yellow-600" />}
+                          {!paralelo2?.isWinner && <Users className="w-6 h-6 text-gray-600" />}
+                        </div>
+                        <h4 className={`font-bold ${paralelo2?.isMyParalelo ? 'text-red-700' : 'text-gray-800'}`}>
+                          {paralelo2?.name || 'Sin asignar'}
+                        </h4>
+                        <p className={`text-2xl font-bold mt-1 ${
+                          paralelo2?.isWinner ? 'text-yellow-600' : paralelo2?.isMyParalelo ? 'text-red-600' : 'text-gray-700'
+                        }`}>
+                          {paralelo2?.score || 0}
+                        </p>
+                        <p className="text-xs text-gray-500">{paralelo2?.participantCount || 0} participantes</p>
+                      </div>
+                    </div>
+
+                    {/* Progress Bar */}
+                    {(challenge.status === 'active' || challenge.status === 'completed') && (
+                      <div className="mt-4">
+                        <div className="h-2 bg-gray-200 rounded-full overflow-hidden flex">
+                          {(() => {
+                            const total = (paralelo1?.score || 0) + (paralelo2?.score || 0);
+                            const p1Percent = total > 0 ? ((paralelo1?.score || 0) / total) * 100 : 50;
+                            return (
+                              <>
+                                <div
+                                  className="h-full bg-blue-500 transition-all duration-500"
+                                  style={{ width: `${p1Percent}%` }}
+                                />
+                                <div
+                                  className="h-full bg-red-500 transition-all duration-500"
+                                  style={{ width: `${100 - p1Percent}%` }}
+                                />
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Info */}
                   <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
@@ -208,41 +294,36 @@ export default function Challenges() {
                       <Target className="w-4 h-4" />
                       <span>{challenge.numExercises} ejercicios</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      <span>{challenge.participantCount}/{challenge.maxParticipants}</span>
-                    </div>
                     {challenge.timeLimit && (
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
                         <span>{challenge.timeLimit} min</span>
                       </div>
                     )}
+                    {challenge.hasJoined && (
+                      <div className="flex items-center gap-1 text-indigo-600">
+                        <Zap className="w-4 h-4" />
+                        <span>Tu puntuacion: {challenge.myScore || 0} pts</span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Participantes */}
-                  {challenge.participants && challenge.participants.length > 0 && (
-                    <div className="mb-4">
-                      <p className="text-xs text-gray-500 mb-2">Participantes:</p>
-                      <div className="flex flex-wrap gap-2">
-                        {challenge.participants.map((p, i) => (
-                          <div
-                            key={i}
-                            className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs ${
-                              p.isWinner
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : p.isMe
-                                ? 'bg-indigo-100 text-indigo-700'
-                                : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {p.isWinner && <Crown className="w-3 h-3" />}
-                            <span>{p.name}</span>
-                            {challenge.status !== 'pending' && (
-                              <span className="font-bold">{p.score} pts</span>
-                            )}
-                          </div>
-                        ))}
+                  {/* Mi progreso si estoy participando */}
+                  {challenge.hasJoined && challenge.status === 'active' && (
+                    <div className="bg-indigo-50 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-indigo-700">Tu progreso:</span>
+                        <span className="font-bold text-indigo-800">
+                          {challenge.myExercisesCompleted || 0} / {challenge.numExercises} ejercicios
+                        </span>
+                      </div>
+                      <div className="w-full bg-indigo-200 rounded-full h-2 mt-2">
+                        <div
+                          className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                          style={{
+                            width: `${((challenge.myExercisesCompleted || 0) / challenge.numExercises) * 100}%`
+                          }}
+                        />
                       </div>
                     </div>
                   )}
@@ -251,7 +332,7 @@ export default function Challenges() {
                   {challenge.status === 'pending' && !challenge.hasJoined && (
                     <button
                       onClick={() => handleJoinChallenge(challenge.id)}
-                      disabled={joining === challenge.id || challenge.participantCount >= challenge.maxParticipants}
+                      disabled={joining === challenge.id}
                       className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                     >
                       {joining === challenge.id ? (
@@ -259,26 +340,39 @@ export default function Challenges() {
                       ) : (
                         <>
                           <Users className="w-4 h-4" />
-                          Unirme
+                          Unirme al Versus
                         </>
                       )}
                     </button>
                   )}
 
-                  {challenge.status === 'active' && challenge.hasJoined && (
+                  {challenge.status === 'active' && challenge.hasJoined && !challenge.myHasFinished && (
                     <button
                       onClick={() => handlePlayChallenge(challenge.id)}
                       className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                     >
                       <Play className="w-4 h-4" />
-                      Jugar Desafio
+                      {challenge.myExercisesCompleted > 0 ? 'Continuar Jugando' : 'Comenzar a Jugar'}
                     </button>
                   )}
 
-                  {challenge.status === 'completed' && challenge.isWinner && (
+                  {challenge.status === 'active' && challenge.hasJoined && challenge.myHasFinished && (
+                    <div className="flex items-center justify-center gap-2 py-2 bg-green-100 text-green-700 rounded-lg">
+                      <CheckCircle className="w-5 h-5" />
+                      <span className="font-medium">Has completado tus ejercicios</span>
+                    </div>
+                  )}
+
+                  {challenge.status === 'completed' && challenge.isWinnerParalelo && (
                     <div className="flex items-center justify-center gap-2 py-2 bg-yellow-100 text-yellow-700 rounded-lg">
                       <Trophy className="w-5 h-5" />
-                      <span className="font-bold">Ganaste!</span>
+                      <span className="font-bold">Tu paralelo gano!</span>
+                    </div>
+                  )}
+
+                  {challenge.status === 'completed' && !challenge.isWinnerParalelo && (
+                    <div className="flex items-center justify-center gap-2 py-2 bg-gray-100 text-gray-600 rounded-lg">
+                      <span className="font-medium">Versus finalizado</span>
                     </div>
                   )}
                 </motion.div>

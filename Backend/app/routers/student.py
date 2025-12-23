@@ -556,7 +556,7 @@ async def get_challenges(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_student)
 ):
-    """Obtener desafios disponibles para el estudiante"""
+    """Obtener desafios (versus) disponibles para el estudiante - Sistema de paralelos vs paralelos"""
     now = datetime.now()
 
     # Obtener paralelo del estudiante
@@ -565,73 +565,98 @@ async def get_challenges(
         Enrollment.is_active == True
     ).first()
 
-    paralelo_id = enrollment.paralelo_id if enrollment else None
+    student_paralelo_id = enrollment.paralelo_id if enrollment else None
 
-    # Base query: desafios activos del paralelo del estudiante o abiertos a todos
+    if not student_paralelo_id:
+        return APIResponse(success=True, data=[], message="No estas inscrito en ningun paralelo")
+
+    # Base query: desafios donde el paralelo del estudiante participa (paralelo1 o paralelo2)
     query = db.query(Challenge).filter(
-        Challenge.is_active == True
+        Challenge.is_active == True,
+        (Challenge.paralelo1_id == student_paralelo_id) | (Challenge.paralelo2_id == student_paralelo_id)
     )
 
-    if paralelo_id:
-        query = query.filter(
-            (Challenge.paralelo_id == paralelo_id) | (Challenge.paralelo_id == None)
-        )
-    else:
-        query = query.filter(Challenge.paralelo_id == None)
-
     if filter == "available":
-        # Desafios pendientes o activos donde el estudiante puede unirse
+        # Versus pendientes o activos
         query = query.filter(Challenge.status.in_([ChallengeStatus.pending, ChallengeStatus.active]))
     elif filter == "my":
-        # Solo desafios donde el estudiante ya esta participando
+        # Solo versus donde el estudiante ya esta participando
         my_challenge_ids = db.query(ChallengeParticipant.challenge_id).filter(
             ChallengeParticipant.student_id == current_user.id
         ).subquery()
         query = query.filter(Challenge.id.in_(my_challenge_ids))
     elif filter == "completed":
-        # Desafios finalizados donde el estudiante participo
-        my_challenge_ids = db.query(ChallengeParticipant.challenge_id).filter(
-            ChallengeParticipant.student_id == current_user.id
-        ).subquery()
-        query = query.filter(
-            Challenge.id.in_(my_challenge_ids),
-            Challenge.status == ChallengeStatus.completed
-        )
+        # Versus finalizados
+        query = query.filter(Challenge.status == ChallengeStatus.completed)
 
     challenges = query.order_by(desc(Challenge.created_at)).all()
 
+    # Nombre del tema
+    topic_names = {
+        "operations": "Operaciones Basicas",
+        "combined_operations": "Operaciones Combinadas",
+        "linear_equations": "Ecuaciones Lineales",
+        "quadratic_equations": "Ecuaciones Cuadraticas",
+        "fractions": "Fracciones",
+        "percentages": "Porcentajes",
+        "geometry": "Geometria",
+        "algebra": "Algebra"
+    }
+
     challenges_data = []
     for challenge in challenges:
-        # Obtener participantes
-        participants = db.query(ChallengeParticipant).filter(
-            ChallengeParticipant.challenge_id == challenge.id
-        ).order_by(desc(ChallengeParticipant.score)).all()
+        # Obtener informacion de los paralelos
+        paralelo1 = challenge.paralelo1
+        paralelo2 = challenge.paralelo2
+
+        # Determinar cual es "mi" paralelo
+        my_paralelo_id = student_paralelo_id
+        is_paralelo1 = str(challenge.paralelo1_id) == str(my_paralelo_id)
 
         # Verificar si el estudiante ya se unio
-        has_joined = any(p.student_id == current_user.id for p in participants)
-        is_winner = challenge.winner_id == current_user.id if challenge.winner_id else False
+        my_participation = db.query(ChallengeParticipant).filter(
+            ChallengeParticipant.challenge_id == challenge.id,
+            ChallengeParticipant.student_id == current_user.id
+        ).first()
+        has_joined = my_participation is not None
 
-        participants_data = []
-        for p in participants:
+        # Determinar ganador
+        is_winner_paralelo = False
+        if challenge.winner_paralelo_id:
+            is_winner_paralelo = str(challenge.winner_paralelo_id) == str(my_paralelo_id)
+
+        # Obtener participantes por paralelo
+        participants_paralelo1 = db.query(ChallengeParticipant).filter(
+            ChallengeParticipant.challenge_id == challenge.id,
+            ChallengeParticipant.paralelo_id == challenge.paralelo1_id
+        ).order_by(desc(ChallengeParticipant.score)).all()
+
+        participants_paralelo2 = db.query(ChallengeParticipant).filter(
+            ChallengeParticipant.challenge_id == challenge.id,
+            ChallengeParticipant.paralelo_id == challenge.paralelo2_id
+        ).order_by(desc(ChallengeParticipant.score)).all()
+
+        # Construir datos de participantes del paralelo 1
+        p1_data = []
+        for p in participants_paralelo1:
             student = p.student
-            participants_data.append({
+            p1_data.append({
                 "name": f"{student.first_name} {student.last_name}",
                 "score": p.score,
                 "isMe": p.student_id == current_user.id,
-                "isWinner": challenge.winner_id == p.student_id if challenge.winner_id else False
+                "hasFinished": p.has_finished
             })
 
-        # Nombre del tema
-        topic_names = {
-            "operations": "Operaciones Basicas",
-            "combined_operations": "Operaciones Combinadas",
-            "linear_equations": "Ecuaciones Lineales",
-            "quadratic_equations": "Ecuaciones Cuadraticas",
-            "fractions": "Fracciones",
-            "percentages": "Porcentajes",
-            "geometry": "Geometria",
-            "algebra": "Algebra"
-        }
+        # Construir datos de participantes del paralelo 2
+        p2_data = []
+        for p in participants_paralelo2:
+            student = p.student
+            p2_data.append({
+                "name": f"{student.first_name} {student.last_name}",
+                "score": p.score,
+                "isMe": p.student_id == current_user.id,
+                "hasFinished": p.has_finished
+            })
 
         challenges_data.append({
             "id": str(challenge.id),
@@ -641,12 +666,32 @@ async def get_challenges(
             "topicName": topic_names.get(challenge.topic.value, challenge.topic.value) if challenge.topic else "Tema Mixto",
             "numExercises": challenge.num_exercises,
             "timeLimit": challenge.time_limit,
-            "maxParticipants": challenge.max_participants,
             "status": challenge.status.value,
-            "participantCount": len(participants),
-            "participants": participants_data,
+            # Informacion de los paralelos
+            "paralelo1": {
+                "id": str(paralelo1.id) if paralelo1 else None,
+                "name": paralelo1.name if paralelo1 else "Sin asignar",
+                "score": challenge.paralelo1_score or 0,
+                "isMyParalelo": is_paralelo1,
+                "isWinner": str(challenge.winner_paralelo_id) == str(challenge.paralelo1_id) if challenge.winner_paralelo_id else False,
+                "participants": p1_data,
+                "participantCount": len(participants_paralelo1)
+            },
+            "paralelo2": {
+                "id": str(paralelo2.id) if paralelo2 else None,
+                "name": paralelo2.name if paralelo2 else "Sin asignar",
+                "score": challenge.paralelo2_score or 0,
+                "isMyParalelo": not is_paralelo1,
+                "isWinner": str(challenge.winner_paralelo_id) == str(challenge.paralelo2_id) if challenge.winner_paralelo_id else False,
+                "participants": p2_data,
+                "participantCount": len(participants_paralelo2)
+            },
             "hasJoined": has_joined,
-            "isWinner": is_winner
+            "isWinnerParalelo": is_winner_paralelo,
+            "myParaleloId": str(my_paralelo_id),
+            "myScore": my_participation.score if my_participation else 0,
+            "myExercisesCompleted": my_participation.exercises_completed if my_participation else 0,
+            "myHasFinished": my_participation.has_finished if my_participation else False
         })
 
     return APIResponse(success=True, data=challenges_data)
@@ -658,8 +703,8 @@ async def join_challenge(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_student)
 ):
-    """Unirse a un desafio"""
-    # Verificar que el desafio existe y esta disponible
+    """Unirse a un versus (competencia entre paralelos)"""
+    # Verificar que el versus existe y esta disponible
     challenge = db.query(Challenge).filter(
         Challenge.id == challenge_id,
         Challenge.is_active == True,
@@ -667,18 +712,22 @@ async def join_challenge(
     ).first()
 
     if not challenge:
-        raise HTTPException(status_code=404, detail="Desafio no encontrado o no disponible")
+        raise HTTPException(status_code=404, detail="Versus no encontrado o no disponible")
 
-    # Verificar que el estudiante pertenece al paralelo del desafio (si aplica)
-    if challenge.paralelo_id:
-        enrollment = db.query(Enrollment).filter(
-            Enrollment.student_id == current_user.id,
-            Enrollment.paralelo_id == challenge.paralelo_id,
-            Enrollment.is_active == True
-        ).first()
+    # Obtener paralelo del estudiante
+    enrollment = db.query(Enrollment).filter(
+        Enrollment.student_id == current_user.id,
+        Enrollment.is_active == True
+    ).first()
 
-        if not enrollment:
-            raise HTTPException(status_code=403, detail="No perteneces al paralelo de este desafio")
+    if not enrollment:
+        raise HTTPException(status_code=403, detail="No estas inscrito en ningun paralelo")
+
+    student_paralelo_id = enrollment.paralelo_id
+
+    # Verificar que el paralelo del estudiante participa en este versus
+    if str(challenge.paralelo1_id) != str(student_paralelo_id) and str(challenge.paralelo2_id) != str(student_paralelo_id):
+        raise HTTPException(status_code=403, detail="Tu paralelo no participa en este versus")
 
     # Verificar que no esta ya participando
     existing = db.query(ChallengeParticipant).filter(
@@ -687,25 +736,18 @@ async def join_challenge(
     ).first()
 
     if existing:
-        raise HTTPException(status_code=400, detail="Ya estas participando en este desafio")
+        raise HTTPException(status_code=400, detail="Ya estas participando en este versus")
 
-    # Verificar limite de participantes
-    participant_count = db.query(ChallengeParticipant).filter(
-        ChallengeParticipant.challenge_id == challenge_id
-    ).count()
-
-    if participant_count >= challenge.max_participants:
-        raise HTTPException(status_code=400, detail="El desafio ya tiene el maximo de participantes")
-
-    # Crear participacion
+    # Crear participacion con el paralelo_id del estudiante
     participant = ChallengeParticipant(
         challenge_id=challenge_id,
-        student_id=current_user.id
+        student_id=current_user.id,
+        paralelo_id=student_paralelo_id
     )
     db.add(participant)
     db.commit()
 
-    return APIResponse(success=True, message="Te has unido al desafio exitosamente")
+    return APIResponse(success=True, message="Te has unido al versus exitosamente")
 
 
 @router.get("/challenges/{challenge_id}/exercise", response_model=APIResponse)
@@ -798,7 +840,7 @@ async def submit_challenge_answer(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_student)
 ):
-    """Enviar respuesta de un ejercicio de desafio"""
+    """Enviar respuesta de un ejercicio de versus - Actualiza puntuacion del paralelo"""
     # Verificar participacion
     participant = db.query(ChallengeParticipant).filter(
         ChallengeParticipant.challenge_id == challenge_id,
@@ -806,16 +848,16 @@ async def submit_challenge_answer(
     ).first()
 
     if not participant:
-        raise HTTPException(status_code=403, detail="No estas participando en este desafio")
+        raise HTTPException(status_code=403, detail="No estas participando en este versus")
 
-    # Verificar desafio activo
+    # Verificar versus activo
     challenge = db.query(Challenge).filter(
         Challenge.id == challenge_id,
         Challenge.status == ChallengeStatus.active
     ).first()
 
     if not challenge:
-        raise HTTPException(status_code=400, detail="El desafio no esta activo")
+        raise HTTPException(status_code=400, detail="El versus no esta activo")
 
     # Obtener ejercicio
     exercise = db.query(Exercise).filter(Exercise.id == request.exercise_id).first()
@@ -834,34 +876,30 @@ async def submit_challenge_answer(
         participant.score
     )
 
-    # Actualizar participacion
+    # Actualizar participacion del estudiante
     participant.exercises_completed += 1
     participant.time_taken += request.time_taken
 
+    points_to_add = 0
     if is_correct:
         participant.correct_answers += 1
         participant.score += points_earned
+        points_to_add = points_earned
     else:
         participant.wrong_answers += 1
+
+    # IMPORTANTE: Actualizar puntuacion del paralelo en el versus
+    student_paralelo_id = participant.paralelo_id
+    if student_paralelo_id:
+        if str(challenge.paralelo1_id) == str(student_paralelo_id):
+            challenge.paralelo1_score = (challenge.paralelo1_score or 0) + points_to_add
+        elif str(challenge.paralelo2_id) == str(student_paralelo_id):
+            challenge.paralelo2_score = (challenge.paralelo2_score or 0) + points_to_add
 
     # Verificar si termino
     if participant.exercises_completed >= challenge.num_exercises:
         participant.has_finished = True
         participant.finished_at = datetime.now()
-
-        # Verificar si todos terminaron para determinar ganador
-        all_participants = db.query(ChallengeParticipant).filter(
-            ChallengeParticipant.challenge_id == challenge_id
-        ).all()
-
-        all_finished = all(p.has_finished for p in all_participants)
-
-        if all_finished:
-            # Determinar ganador
-            winner = max(all_participants, key=lambda p: p.score)
-            challenge.status = ChallengeStatus.completed
-            challenge.winner_id = winner.student_id
-            challenge.end_time = datetime.now()
 
     # Guardar intento
     attempt = ExerciseAttempt(
@@ -876,7 +914,9 @@ async def submit_challenge_answer(
 
     db.add(attempt)
     db.commit()
+    db.refresh(challenge)
 
+    # Obtener puntuaciones actualizadas
     return APIResponse(
         success=True,
         data={
@@ -886,7 +926,10 @@ async def submit_challenge_answer(
             "new_score": participant.score,
             "exercises_completed": participant.exercises_completed,
             "total_exercises": challenge.num_exercises,
-            "has_finished": participant.has_finished
+            "has_finished": participant.has_finished,
+            # Scores de paralelos actualizados
+            "paralelo1Score": challenge.paralelo1_score or 0,
+            "paralelo2Score": challenge.paralelo2_score or 0
         }
     )
 
