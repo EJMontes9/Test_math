@@ -278,8 +278,8 @@ class Challenge(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     # Paralelos que compiten (ahora son dos)
-    paralelo1_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=False)
-    paralelo2_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=False)
+    paralelo1_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)
+    paralelo2_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)
     title = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     topic = Column(SQLEnum(MathTopic), nullable=True)  # Tema especifico o null para todos
@@ -313,7 +313,7 @@ class ChallengeParticipant(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     challenge_id = Column(UUID(as_uuid=True), ForeignKey("challenges.id"), nullable=False)
     student_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=False)  # Paralelo del participante
+    paralelo_id = Column(UUID(as_uuid=True), ForeignKey("paralelos.id"), nullable=True)  # Paralelo del participante
     score = Column(Integer, default=0)
     exercises_completed = Column(Integer, default=0)
     correct_answers = Column(Integer, default=0)
