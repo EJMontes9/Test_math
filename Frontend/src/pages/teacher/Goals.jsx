@@ -110,6 +110,7 @@ export default function Goals() {
       }
     } catch (error) {
       console.error('Error al crear meta:', error);
+      alert(error.detail || error.message || 'Error al crear la meta');
     }
   };
 
