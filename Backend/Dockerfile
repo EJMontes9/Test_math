@@ -17,7 +17,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copiar código
 COPY . .
 
-# Crear usuario no-root
+# Crear directorios necesarios
+RUN mkdir -p /app/uploads /app/static/avatars
+
+# Crear usuario no-root y dar permisos
 RUN useradd -m -u 1001 fastapi && \
     chown -R fastapi:fastapi /app
 
