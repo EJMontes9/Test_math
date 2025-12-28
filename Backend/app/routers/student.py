@@ -849,7 +849,7 @@ async def get_challenge_exercise(
 @router.post("/challenges/{challenge_id}/submit-answer", response_model=APIResponse)
 async def submit_challenge_answer(
     challenge_id: UUID,
-    request: schemas.SubmitAnswerRequest,
+    request: schemas.SubmitChallengeAnswerRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_student)
 ):
@@ -936,10 +936,12 @@ async def submit_challenge_answer(
             "is_correct": is_correct,
             "correct_answer": exercise.correct_answer,
             "points_earned": points_earned if is_correct else 0,
+            "points_lost": points_lost if not is_correct else 0,
             "new_score": participant.score,
             "exercises_completed": participant.exercises_completed,
             "total_exercises": challenge.num_exercises,
             "has_finished": participant.has_finished,
+            "explanation": f"La respuesta correcta es: {exercise.correct_answer}",
             # Scores de paralelos actualizados
             "paralelo1Score": challenge.paralelo1_score or 0,
             "paralelo2Score": challenge.paralelo2_score or 0

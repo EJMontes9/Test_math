@@ -153,6 +153,14 @@ class SubmitAnswerRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+class SubmitChallengeAnswerRequest(BaseModel):
+    exercise_id: UUID
+    answer: str
+    time_taken: int
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
 class EndGameRequest(BaseModel):
     session_id: UUID
 

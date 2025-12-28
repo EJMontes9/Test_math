@@ -8,14 +8,14 @@ import {
   Trophy,
   Users,
   Clock,
-  Target,
   Zap,
   X,
   Trash2,
   CheckCircle,
   Filter,
   Crown,
-  ArrowRight
+  ArrowRight,
+  Target
 } from 'lucide-react';
 import teacherService from '../../services/teacherService';
 
@@ -58,7 +58,7 @@ export default function Versus() {
     topic: '',
     difficulty: '',
     numExercises: 10,
-    timeLimit: ''
+    timeLimit: 0
   });
 
   useEffect(() => {
@@ -89,6 +89,7 @@ export default function Versus() {
   const handleCreateChallenge = async (e) => {
     e.preventDefault();
     try {
+      const timeLimitValue = parseInt(formData.timeLimit);
       const challengePayload = {
         title: formData.title,
         description: formData.description || null,
@@ -96,8 +97,8 @@ export default function Versus() {
         paralelo2Id: formData.paralelo2Id,
         topic: formData.topic || null,
         difficulty: formData.difficulty || null,
-        numExercises: parseInt(formData.numExercises),
-        timeLimit: formData.timeLimit ? parseInt(formData.timeLimit) : null
+        numExercises: parseInt(formData.numExercises) || 10,
+        timeLimit: timeLimitValue > 0 ? timeLimitValue : null
       };
 
       const response = await teacherService.createChallenge(challengePayload);
@@ -158,7 +159,7 @@ export default function Versus() {
       topic: '',
       difficulty: '',
       numExercises: 10,
-      timeLimit: ''
+      timeLimit: 0
     });
   };
 
@@ -321,16 +322,6 @@ export default function Versus() {
 
                   {/* Challenge Info */}
                   <div className="flex flex-wrap gap-3 text-sm">
-                    <div className="flex items-center gap-1 text-gray-600">
-                      <Target className="w-4 h-4" />
-                      <span>{challenge.numExercises} ejercicios</span>
-                    </div>
-                    {challenge.timeLimit && (
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Clock className="w-4 h-4" />
-                        <span>{challenge.timeLimit} min</span>
-                      </div>
-                    )}
                     {challenge.topic && (
                       <div className="flex items-center gap-1 text-gray-600">
                         <Zap className="w-4 h-4" />
@@ -345,6 +336,19 @@ export default function Versus() {
                       }`}>
                         {DIFFICULTIES[challenge.difficulty]}
                       </span>
+                    )}
+                    {!challenge.topic && !challenge.difficulty && (
+                      <span className="text-gray-500">Tema y dificultad mixtos</span>
+                    )}
+                    <div className="flex items-center gap-1 text-gray-600">
+                      <Target className="w-4 h-4" />
+                      <span>{challenge.numExercises || 10} ejercicios</span>
+                    </div>
+                    {challenge.timeLimit > 0 && (
+                      <div className="flex items-center gap-1 text-gray-600">
+                        <Clock className="w-4 h-4" />
+                        <span>{challenge.timeLimit} min</span>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -646,6 +650,7 @@ export default function Versus() {
                   </div>
                 </div>
 
+                {/* Ejercicios y Tiempo */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -653,27 +658,28 @@ export default function Versus() {
                     </label>
                     <input
                       type="number"
+                      min="1"
+                      max="50"
                       value={formData.numExercises}
                       onChange={(e) => setFormData({ ...formData, numExercises: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      min="5"
-                      max="50"
-                      required
                     />
+                    <p className="text-xs text-gray-500 mt-1">Cantidad de ejercicios que cada estudiante debe resolver</p>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Tiempo limite (min)
+                      Tiempo límite (minutos)
                     </label>
                     <input
                       type="number"
+                      min="0"
+                      max="180"
                       value={formData.timeLimit}
                       onChange={(e) => setFormData({ ...formData, timeLimit: e.target.value })}
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                      placeholder="Sin limite"
-                      min="1"
                     />
+                    <p className="text-xs text-gray-500 mt-1">0 = sin límite de tiempo</p>
                   </div>
                 </div>
 

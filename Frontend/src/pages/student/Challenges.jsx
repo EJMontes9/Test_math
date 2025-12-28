@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Trophy, Clock, Users, Play, CheckCircle, Loader2, Crown, Target, Zap } from 'lucide-react';
+import { Swords, Trophy, Clock, Users, Play, CheckCircle, Loader2, Crown, Zap } from 'lucide-react';
 import studentService from '../../services/studentService';
 
 export default function Challenges() {
@@ -289,41 +289,11 @@ export default function Challenges() {
                   </div>
 
                   {/* Info */}
-                  <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                    <div className="flex items-center gap-1">
-                      <Target className="w-4 h-4" />
-                      <span>{challenge.numExercises} ejercicios</span>
-                    </div>
-                    {challenge.timeLimit && (
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{challenge.timeLimit} min</span>
-                      </div>
-                    )}
-                    {challenge.hasJoined && (
+                  {challenge.hasJoined && (
+                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
                       <div className="flex items-center gap-1 text-indigo-600">
                         <Zap className="w-4 h-4" />
                         <span>Tu puntuacion: {challenge.myScore || 0} pts</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Mi progreso si estoy participando */}
-                  {challenge.hasJoined && challenge.status === 'active' && (
-                    <div className="bg-indigo-50 rounded-lg p-3 mb-4">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-indigo-700">Tu progreso:</span>
-                        <span className="font-bold text-indigo-800">
-                          {challenge.myExercisesCompleted || 0} / {challenge.numExercises} ejercicios
-                        </span>
-                      </div>
-                      <div className="w-full bg-indigo-200 rounded-full h-2 mt-2">
-                        <div
-                          className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                          style={{
-                            width: `${((challenge.myExercisesCompleted || 0) / challenge.numExercises) * 100}%`
-                          }}
-                        />
                       </div>
                     </div>
                   )}

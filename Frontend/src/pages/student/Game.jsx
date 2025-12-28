@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy,
   Zap,
@@ -15,7 +15,8 @@ import {
   XCircle,
   Flame,
   Award,
-  Home
+  Home,
+  Swords
 } from 'lucide-react';
 import studentService from '../../services/studentService';
 import Confetti from 'react-confetti';
@@ -76,6 +77,9 @@ const getRandomPhrase = (isCorrect) => {
 
 export default function Game() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const challengeId = searchParams.get('challenge');
+
   const [gameState, setGameState] = useState('menu'); // menu, playing, result, gameOver
   const [sessionId, setSessionId] = useState(null);
   const [currentExercise, setCurrentExercise] = useState(null);
@@ -92,6 +96,61 @@ export default function Game() {
   const [motivationalPhrase, setMotivationalPhrase] = useState('');
   const timerRef = useRef(null);
   const startTimeRef = useRef(null);
+
+  // Estado para modo Versus
+  const [versusMode, setVersusMode] = useState(false);
+  const [versusData, setVersusData] = useState(null);
+  const versusInitialized = useRef(false);
+
+  // Detectar si estamos en modo Versus y cargar automáticamente
+  useEffect(() => {
+    if (challengeId && !versusInitialized.current) {
+      versusInitialized.current = true;
+      setVersusMode(true);
+      // Iniciar el juego versus directamente
+      const initVersus = async () => {
+        try {
+          setLoading(true);
+          setScore(0);
+          setStreak(0);
+          setExercisesCompleted(0);
+          setCorrectAnswers(0);
+          setWrongAnswers(0);
+          setGameState('playing');
+
+          // Cargar primer ejercicio
+          setSelectedAnswer(null);
+          setTimeLeft(60);
+          startTimeRef.current = Date.now();
+
+          const response = await studentService.getChallengeExercise(challengeId);
+
+          if (response.success) {
+            if (response.data.finished) {
+              setScore(response.data.score || 0);
+              setCorrectAnswers(response.data.correct_answers || 0);
+              setWrongAnswers(response.data.wrong_answers || 0);
+              setGameState('gameOver');
+              return;
+            }
+
+            setCurrentExercise(response.data);
+            setScore(response.data.current_score || 0);
+            setVersusData({
+              currentExercise: response.data.current_exercise,
+              totalExercises: response.data.total_exercises
+            });
+          }
+        } catch (error) {
+          console.error('Error al iniciar versus:', error);
+          navigate('/student/challenges');
+        } finally {
+          setLoading(false);
+        }
+      };
+      initVersus();
+    }
+  }, [challengeId, navigate]);
 
   // Bloquear copiar, pegar, cortar y menú contextual durante el juego
   const preventCopyPaste = useCallback((e) => {
@@ -139,6 +198,102 @@ export default function Game() {
       handleTimeout();
     }
   }, [gameState, timeLeft]);
+
+  // Cargar siguiente ejercicio de Versus
+  const loadVersusExercise = async () => {
+    try {
+      setLoading(true);
+      setSelectedAnswer(null);
+      setTimeLeft(60);
+      startTimeRef.current = Date.now();
+
+      const response = await studentService.getChallengeExercise(challengeId);
+
+      if (response.success) {
+        // Verificar si ya terminó los ejercicios del versus
+        if (response.data.finished) {
+          setScore(response.data.score || 0);
+          setCorrectAnswers(response.data.correct_answers || 0);
+          setWrongAnswers(response.data.wrong_answers || 0);
+          setGameState('gameOver');
+          return;
+        }
+
+        setCurrentExercise(response.data);
+        setScore(response.data.current_score || 0);
+        setVersusData({
+          currentExercise: response.data.current_exercise,
+          totalExercises: response.data.total_exercises
+        });
+      }
+    } catch (error) {
+      console.error('Error al cargar ejercicio versus:', error);
+      // Si hay error (ej: ya terminó), volver a challenges
+      navigate('/student/challenges');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enviar respuesta en modo Versus
+  const submitVersusAnswer = async () => {
+    if (!selectedAnswer || gameState === 'result' || loading) return;
+
+    const timeTaken = Math.floor((Date.now() - startTimeRef.current) / 1000);
+
+    try {
+      setLoading(true);
+      const response = await studentService.submitChallengeAnswer(
+        challengeId,
+        currentExercise.exercise_id,
+        selectedAnswer,
+        timeTaken
+      );
+
+      if (response.success) {
+        setLastResult(response.data);
+        setScore(response.data.new_score);
+        setExercisesCompleted(response.data.exercises_completed);
+        setVersusData(prev => ({
+          ...prev,
+          paralelo1Score: response.data.paralelo1Score,
+          paralelo2Score: response.data.paralelo2Score,
+          hasFinished: response.data.has_finished,
+          currentExercise: response.data.exercises_completed,
+          totalExercises: response.data.total_exercises
+        }));
+
+        // Generar frase motivacional aleatoria
+        setMotivationalPhrase(getRandomPhrase(response.data.is_correct));
+
+        if (response.data.is_correct) {
+          setCorrectAnswers((prev) => prev + 1);
+          setStreak((prev) => prev + 1);
+          setShowConfetti(true);
+          setTimeout(() => setShowConfetti(false), 3000);
+
+          if ((streak + 1) % 5 === 0) {
+            playStreakAnimation();
+          }
+        } else {
+          setWrongAnswers((prev) => prev + 1);
+          setStreak(0);
+        }
+
+        // Verificar si terminó el versus
+        if (response.data.has_finished) {
+          setGameState('gameOver');
+        } else {
+          setGameState('result');
+        }
+      }
+    } catch (error) {
+      console.error('Error al enviar respuesta versus:', error);
+      alert('Error al enviar respuesta: ' + (error.message || 'Error desconocido'));
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const startGame = async () => {
     try {
@@ -236,13 +391,21 @@ export default function Game() {
   const handleTimeout = () => {
     // Auto-enviar respuesta incorrecta si se acaba el tiempo
     if (gameState === 'playing' && currentExercise) {
-      submitAnswer();
+      if (versusMode) {
+        submitVersusAnswer();
+      } else {
+        submitAnswer();
+      }
     }
   };
 
   const nextExercise = () => {
     setGameState('playing');
-    loadNextExercise();
+    if (versusMode) {
+      loadVersusExercise();
+    } else {
+      loadNextExercise();
+    }
   };
 
   const endGame = async () => {
@@ -412,7 +575,7 @@ export default function Game() {
           animate={{ opacity: 1, x: 0 }}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => navigate('/student/dashboard')}
+          onClick={() => navigate(versusMode ? '/student/challenges' : '/student/dashboard')}
           className="fixed top-4 left-4 z-50 bg-white/90 backdrop-blur-sm hover:bg-white text-gray-800 px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 transition-all"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -421,7 +584,23 @@ export default function Game() {
 
         {/* Header con puntuación */}
         <div className="max-w-4xl mx-auto mb-6">
-          <div className="bg-white rounded-2xl shadow-lg p-4">
+          {/* Indicador de Versus */}
+          {versusMode && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-2xl px-4 py-2 flex items-center justify-center gap-2"
+            >
+              <Swords className="w-5 h-5" />
+              <span className="font-bold">Modo Versus</span>
+              {versusData && (
+                <span className="text-sm opacity-90">
+                  - Ejercicio {versusData.currentExercise || 1} de {versusData.totalExercises || '∞'}
+                </span>
+              )}
+            </motion.div>
+          )}
+          <div className={`bg-white shadow-lg p-4 ${versusMode ? 'rounded-b-2xl' : 'rounded-2xl'}`}>
             <div className="grid grid-cols-3 gap-4">
               {/* Score */}
               <motion.div
@@ -623,20 +802,22 @@ export default function Game() {
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={submitAnswer}
+                        onClick={versusMode ? submitVersusAnswer : submitAnswer}
                         disabled={!selectedAnswer || loading}
                         className="flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Enviar Respuesta
                       </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={endGame}
-                        className="px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl"
-                      >
-                        <X className="w-6 h-6" />
-                      </motion.button>
+                      {!versusMode && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={endGame}
+                          className="px-6 py-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl"
+                        >
+                          <X className="w-6 h-6" />
+                        </motion.button>
+                      )}
                     </>
                   ) : (
                     <motion.button
@@ -676,10 +857,24 @@ export default function Game() {
             transition={{ duration: 2 }}
             className="text-center mb-8"
           >
-            <Trophy className="w-32 h-32 text-yellow-500 mx-auto mb-4" />
-            <h1 className="text-5xl font-bold text-gray-800 mb-4">
-              ¡Juego Terminado!
-            </h1>
+            {versusMode ? (
+              <>
+                <Swords className="w-32 h-32 text-indigo-500 mx-auto mb-4" />
+                <h1 className="text-5xl font-bold text-gray-800 mb-4">
+                  ¡Versus Completado!
+                </h1>
+                <p className="text-xl text-gray-600">
+                  Has aportado {score} puntos a tu paralelo
+                </p>
+              </>
+            ) : (
+              <>
+                <Trophy className="w-32 h-32 text-yellow-500 mx-auto mb-4" />
+                <h1 className="text-5xl font-bold text-gray-800 mb-4">
+                  ¡Juego Terminado!
+                </h1>
+              </>
+            )}
           </motion.div>
 
           {/* Estadísticas finales */}
@@ -710,28 +905,42 @@ export default function Game() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                setGameState('menu');
-                setSessionId(null);
-              }}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-            >
-              <Trophy className="w-6 h-6" />
-              Jugar de Nuevo
-            </motion.button>
+            {versusMode ? (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('/student/challenges')}
+                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+              >
+                <Swords className="w-6 h-6" />
+                Volver a Versus
+              </motion.button>
+            ) : (
+              <>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setGameState('menu');
+                    setSessionId(null);
+                  }}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-xl font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <Trophy className="w-6 h-6" />
+                  Jugar de Nuevo
+                </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/student/dashboard')}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-xl font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
-            >
-              <Home className="w-6 h-6" />
-              Volver al Menú Principal
-            </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/student/dashboard')}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 text-xl font-bold py-4 px-8 rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                >
+                  <Home className="w-6 h-6" />
+                  Volver al Menú Principal
+                </motion.button>
+              </>
+            )}
           </div>
         </motion.div>
       </div>

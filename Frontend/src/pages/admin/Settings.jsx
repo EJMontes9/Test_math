@@ -1,22 +1,16 @@
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, Save, RefreshCw, Database, Shield, Palette } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, Database, Palette } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import settingService from '../../services/settingService';
 import { useSettings } from '../../context/SettingsContext';
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState('application');
   const [settings, setSettings] = useState({});
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const { refreshSettings } = useSettings();
-
-  const tabs = [
-    { id: 'application', label: 'Aplicación', icon: Palette },
-    { id: 'security', label: 'Seguridad', icon: Shield }
-  ];
 
   useEffect(() => {
     loadSettings();
@@ -182,141 +176,54 @@ const Settings = () => {
         </motion.div>
       )}
 
-      {/* Tabs */}
+      {/* Personalización del Tema */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="border-b border-gray-200">
-          <div className="flex space-x-1 p-2">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex-1 flex items-center justify-center space-x-2 px-4 py-3 rounded-lg transition-all ${
-                    activeTab === tab.id
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md'
-                      : 'text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tab Content */}
         <div className="p-6">
-          {/* Configuración de la Aplicación */}
-          {activeTab === 'application' && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="space-y-6"
-            >
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Personalización del Tema</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Color Primario
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="color"
-                        value={formData.app_primary_color || '#3B82F6'}
-                        onChange={(e) => handleChange('app_primary_color', e.target.value)}
-                        className="w-16 h-12 border border-gray-300 rounded-lg cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={formData.app_primary_color || '#3B82F6'}
-                        onChange={(e) => handleChange('app_primary_color', e.target.value)}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Color Secundario
-                    </label>
-                    <div className="flex space-x-2">
-                      <input
-                        type="color"
-                        value={formData.app_secondary_color || '#8B5CF6'}
-                        onChange={(e) => handleChange('app_secondary_color', e.target.value)}
-                        className="w-16 h-12 border border-gray-300 rounded-lg cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={formData.app_secondary_color || '#8B5CF6'}
-                        onChange={(e) => handleChange('app_secondary_color', e.target.value)}
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                  </div>
-                </div>
+          <div className="flex items-center space-x-2 mb-6">
+            <Palette className="w-6 h-6 text-blue-600" />
+            <h3 className="text-lg font-bold text-gray-800">Personalización del Tema</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Color Primario
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="color"
+                  value={formData.app_primary_color || '#3B82F6'}
+                  onChange={(e) => handleChange('app_primary_color', e.target.value)}
+                  className="w-16 h-12 border border-gray-300 rounded-lg cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={formData.app_primary_color || '#3B82F6'}
+                  onChange={(e) => handleChange('app_primary_color', e.target.value)}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            </motion.div>
-          )}
+            </div>
 
-          {/* Configuración de Seguridad */}
-          {activeTab === 'security' && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="space-y-6"
-            >
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Configuración de Seguridad</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tiempo de Sesión (minutos)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.session_timeout || 60}
-                      onChange={(e) => handleChange('session_timeout', parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      min="15"
-                      max="480"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Longitud Mínima de Contraseña
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.password_min_length || 6}
-                      onChange={(e) => handleChange('password_min_length', parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      min="4"
-                      max="20"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.require_password_change || false}
-                        onChange={(e) => handleChange('require_password_change', e.target.checked)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700">
-                        Requerir cambio de contraseña inicial
-                      </span>
-                    </label>
-                  </div>
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Color Secundario
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="color"
+                  value={formData.app_secondary_color || '#8B5CF6'}
+                  onChange={(e) => handleChange('app_secondary_color', e.target.value)}
+                  className="w-16 h-12 border border-gray-300 rounded-lg cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={formData.app_secondary_color || '#8B5CF6'}
+                  onChange={(e) => handleChange('app_secondary_color', e.target.value)}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
               </div>
-            </motion.div>
-          )}
+            </div>
+          </div>
         </div>
       </div>
     </div>
