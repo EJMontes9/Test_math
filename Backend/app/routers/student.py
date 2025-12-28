@@ -437,19 +437,30 @@ async def get_ranking(
     for student_id in student_ids:
         student = db.query(User).filter(User.id == student_id).first()
 
-        # Calcular puntuación total
+        # Calcular puntuación de ejercicios
         sessions = db.query(GameSession).filter(
             GameSession.student_id == student_id
         ).all()
 
-        total_score = sum(s.total_score for s in sessions)
+        exercise_score = sum(s.total_score for s in sessions)
         total_exercises = sum(s.exercises_completed for s in sessions)
         correct_answers = sum(s.correct_answers for s in sessions)
+
+        # Calcular puntos bonus de metas completadas
+        goal_bonus = db.query(func.coalesce(func.sum(StudentGoal.points_earned), 0)).filter(
+            StudentGoal.student_id == student_id,
+            StudentGoal.status == GoalStatus.completed
+        ).scalar() or 0
+
+        # Total combinado para ordenar
+        total_score = exercise_score + goal_bonus
 
         ranking_data.append({
             "student_id": str(student.id),
             "name": f"{student.first_name} {student.last_name}",
             "total_score": total_score,
+            "exercise_score": exercise_score,
+            "goal_bonus": goal_bonus,
             "exercises_completed": total_exercises,
             "correct_answers": correct_answers,
             "is_current_user": student.id == current_user.id

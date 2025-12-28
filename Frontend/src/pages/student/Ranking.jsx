@@ -117,6 +117,11 @@ export default function Ranking() {
             <div className="text-right">
               <p className="text-sm opacity-90">Puntuación Total</p>
               <p className="text-4xl font-bold">{currentUserRanking.total_score}</p>
+              {currentUserRanking.goal_bonus > 0 && (
+                <p className="text-xs opacity-75 mt-1">
+                  {currentUserRanking.exercise_score} ejercicios + {currentUserRanking.goal_bonus} bonus metas
+                </p>
+              )}
             </div>
           </div>
         </motion.div>
@@ -175,6 +180,11 @@ export default function Ranking() {
                   <p className="text-2xl font-bold text-yellow-600">
                     {actualStudent.total_score}
                   </p>
+                  {actualStudent.goal_bonus > 0 && (
+                    <p className="text-xs text-yellow-700 mt-1">
+                      +{actualStudent.goal_bonus} bonus
+                    </p>
+                  )}
                 </div>
 
                 {/* Stats */}
@@ -264,6 +274,11 @@ export default function Ranking() {
                     <p className="text-2xl font-bold text-indigo-600">
                       {student.total_score}
                     </p>
+                    {student.goal_bonus > 0 && (
+                      <p className="text-xs text-green-600">
+                        +{student.goal_bonus} bonus metas
+                      </p>
+                    )}
                   </div>
                 </div>
               </motion.div>
