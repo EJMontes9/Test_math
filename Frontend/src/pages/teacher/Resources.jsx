@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, Video, Link as LinkIcon, Plus, Search, Edit2, Trash2, Eye, Loader2, BookOpen, X, Upload, ExternalLink } from 'lucide-react';
+import { FileText, Video, Link as LinkIcon, Plus, Search, Edit2, Trash2, Eye, Loader2, BookOpen, X, Upload, ExternalLink, Users } from 'lucide-react';
 import resourceService from '../../services/resourceService';
+import teacherService from '../../services/teacherService';
 import { getConfiguredApiUrl } from '../../services/api';
 
 const resourceTypeIcons = {
@@ -39,6 +40,19 @@ const isYouTubeUrl = (url) => {
 const ResourceViewer = ({ resource, onClose }) => {
   const apiUrl = getConfiguredApiUrl().replace('/api', '');
 
+  // Construir URL completa para PDFs locales
+  const getPdfUrl = () => {
+    if (!resource.url) return null;
+    if (resource.url.startsWith('/api/files/')) {
+      return `${apiUrl}${resource.url}`;
+    }
+    if (resource.url.startsWith('http')) {
+      return resource.url;
+    }
+    // Si es una ruta relativa, agregar el apiUrl
+    return `${apiUrl}${resource.url}`;
+  };
+
   const renderContent = () => {
     if (resource.resourceType === 'video' || isYouTubeUrl(resource.url)) {
       const videoId = getYouTubeVideoId(resource.url);
@@ -58,18 +72,33 @@ const ResourceViewer = ({ resource, onClose }) => {
     }
 
     if (resource.resourceType === 'pdf') {
-      // Si es un archivo local subido
-      const pdfUrl = resource.url.startsWith('/api/files/')
-        ? `${apiUrl}${resource.url}`
-        : resource.url;
+      const pdfUrl = getPdfUrl();
+
+      if (!pdfUrl) {
+        return (
+          <div className="flex flex-col items-center justify-center h-[70vh]">
+            <FileText className="w-16 h-16 text-gray-300 mb-4" />
+            <p className="text-gray-500">No se pudo cargar el PDF</p>
+          </div>
+        );
+      }
 
       return (
-        <div className="w-full h-[70vh]">
-          <iframe
-            src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
-            className="w-full h-full rounded-lg border border-gray-200"
-            title={resource.title}
-          />
+        <div className="flex flex-col items-center justify-center h-[70vh]">
+          <FileText className="w-20 h-20 text-indigo-500 mb-6" />
+          <h3 className="text-xl font-semibold text-gray-800 mb-2">{resource.title}</h3>
+          <p className="text-gray-500 mb-6 text-center max-w-md">
+            {resource.description || 'Documento PDF'}
+          </p>
+          <a
+            href={pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <ExternalLink className="w-5 h-5" />
+            Abrir PDF en nueva pestaña
+          </a>
         </div>
       );
     }
@@ -131,6 +160,7 @@ const ResourceViewer = ({ resource, onClose }) => {
 
 export default function Resources() {
   const [resources, setResources] = useState([]);
+  const [paralelos, setParalelos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTopic, setSelectedTopic] = useState('');
@@ -146,12 +176,25 @@ export default function Resources() {
     description: '',
     url: '',
     resourceType: 'link',
-    topic: ''
+    topic: '',
+    paraleloId: ''
   });
 
   useEffect(() => {
     loadResources();
+    loadParalelos();
   }, []);
+
+  const loadParalelos = async () => {
+    try {
+      const response = await teacherService.getParalelos();
+      if (response.success) {
+        setParalelos(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading paralelos:', error);
+    }
+  };
 
   const loadResources = async () => {
     try {
@@ -176,7 +219,8 @@ export default function Resources() {
         description: resource.description || '',
         url: resource.url,
         resourceType: resource.resourceType,
-        topic: resource.topic || ''
+        topic: resource.topic || '',
+        paraleloId: resource.paraleloId || ''
       });
     } else {
       setEditingResource(null);
@@ -187,7 +231,8 @@ export default function Resources() {
         description: '',
         url: '',
         resourceType: 'link',
-        topic: ''
+        topic: '',
+        paraleloId: ''
       });
     }
     setShowModal(true);
@@ -203,7 +248,8 @@ export default function Resources() {
       description: '',
       url: '',
       resourceType: 'link',
-      topic: ''
+      topic: '',
+      paraleloId: ''
     });
   };
 
@@ -236,7 +282,8 @@ export default function Resources() {
           selectedFile,
           formData.title,
           formData.description,
-          formData.topic
+          formData.topic,
+          formData.paraleloId
         );
       } else if (editingResource) {
         await resourceService.updateResource(editingResource.id, formData);
@@ -390,7 +437,7 @@ export default function Resources() {
                 <div className="p-4">
                   <h3 className="font-bold text-gray-800 mb-1 truncate">{resource.title}</h3>
                   <p className="text-sm text-gray-500 mb-3 line-clamp-2">{resource.description || 'Sin descripcion'}</p>
-                  <div className="flex items-center justify-between text-sm mb-3">
+                  <div className="flex items-center justify-between text-sm mb-2">
                     <div className="flex items-center space-x-2 text-gray-400">
                       <Eye className="w-4 h-4" />
                       <span>{resource.viewCount || 0} vistas</span>
@@ -400,6 +447,10 @@ export default function Resources() {
                         {topicLabels[resource.topic] || resource.topic}
                       </span>
                     )}
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-gray-400 mb-3">
+                    <Users className="w-3 h-3" />
+                    <span>{resource.paraleloName || 'Todos los paralelos'}</span>
                   </div>
                   <div className="flex gap-2">
                     <button
@@ -591,6 +642,31 @@ export default function Resources() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Selector de Paralelo */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      Disponible para
+                    </span>
+                  </label>
+                  <select
+                    value={formData.paraleloId}
+                    onChange={(e) => setFormData({ ...formData, paraleloId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="">Todos los paralelos</option>
+                    {paralelos.map((paralelo) => (
+                      <option key={paralelo.id} value={paralelo.id}>
+                        {paralelo.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Deja "Todos los paralelos" para que todos los estudiantes puedan verlo
+                  </p>
                 </div>
 
                 <div className="flex gap-3 pt-4">

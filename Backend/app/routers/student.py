@@ -182,6 +182,7 @@ async def get_next_exercise(
     exercise_data = ExerciseGenerator.generate_exercise(selected_topic, difficulty, session.total_score)
 
     # Guardar ejercicio en BD (temporal para esta sesión)
+    # Incluir paralelo_id de la sesión para tracking de progreso
     exercise = Exercise(
         title=exercise_data["title"],
         question=exercise_data["question"],
@@ -192,7 +193,8 @@ async def get_next_exercise(
         options=exercise_data["options"],
         points=_calculate_exercise_points(difficulty, session.total_score),
         is_practice=True,
-        is_active=True
+        is_active=True,
+        paralelo_id=session.paralelo_id  # Vincular al paralelo del estudiante
     )
 
     db.add(exercise)

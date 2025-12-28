@@ -4,13 +4,14 @@ const resourceService = {
   // ============= TEACHER RESOURCES =============
 
   // Subir archivo PDF
-  uploadFile: async (file, title, description, topic) => {
+  uploadFile: async (file, title, description, topic, paraleloId) => {
     try {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('title', title || '');
       formData.append('description', description || '');
       formData.append('topic', topic || '');
+      formData.append('paralelo_id', paraleloId || '');
 
       const response = await api.post('/teacher/resources/upload', formData, {
         headers: {

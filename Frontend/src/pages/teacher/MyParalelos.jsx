@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { BookOpen, Users, Target, TrendingUp, ArrowRight, RefreshCw } from 'lucide-react';
+import { BookOpen, Users, Target, TrendingUp, ArrowRight, RefreshCw, CheckCircle, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import teacherService from '../../services/teacherService';
 
@@ -133,7 +133,7 @@ export default function MyParalelos() {
 
                 <div className="bg-green-50 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1">
-                    <Target className="w-4 h-4 text-green-600" />
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                     <span className="text-xs text-green-600 font-medium">
                       Ejercicios
                     </span>
@@ -144,12 +144,29 @@ export default function MyParalelos() {
                 </div>
               </div>
 
+              {/* Precisión promedio */}
+              {paralelo.avgAccuracy > 0 && (
+                <div className="bg-purple-50 rounded-lg p-3 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 text-purple-600" />
+                      <span className="text-xs text-purple-600 font-medium">
+                        Precisión promedio
+                      </span>
+                    </div>
+                    <p className="text-lg font-bold text-purple-900">
+                      {paralelo.avgAccuracy}%
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Progress Bar */}
               <div className="mb-4">
                 <div className="flex items-center justify-between text-sm mb-2">
                   <span className="text-gray-600 flex items-center gap-1">
-                    <TrendingUp className="w-4 h-4" />
-                    Progreso General
+                    <Activity className="w-4 h-4" />
+                    Participación
                   </span>
                   <span className="font-semibold text-gray-900">
                     {paralelo.progress}%
@@ -161,6 +178,12 @@ export default function MyParalelos() {
                     style={{ width: `${paralelo.progress}%` }}
                   ></div>
                 </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {paralelo.progress > 0
+                    ? `${Math.round(paralelo.activeStudents * paralelo.progress / 100)} de ${paralelo.activeStudents} estudiantes han practicado`
+                    : 'Ningún estudiante ha practicado aún'
+                  }
+                </p>
               </div>
 
               {/* Action Button */}

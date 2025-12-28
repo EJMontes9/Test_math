@@ -7,7 +7,7 @@ import shutil
 from sqlalchemy import func, and_, desc, or_
 from typing import Optional, List
 from uuid import UUID
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, Field
 from io import BytesIO
 from reportlab.lib import colors
@@ -108,22 +108,42 @@ async def get_my_paralelos(
             Enrollment.is_active == True
         ).scalar()
 
-        # Contar ejercicios activos
-        active_exercises = db.query(func.count(Exercise.id)).filter(
-            Exercise.paralelo_id == paralelo.id,
-            Exercise.is_active == True
-        ).scalar()
+        # Obtener IDs de estudiantes inscritos
+        student_ids = [e.student_id for e in db.query(Enrollment.student_id).filter(
+            Enrollment.paralelo_id == paralelo.id,
+            Enrollment.is_active == True
+        ).all()]
 
-        # Calcular promedio de progreso (% de ejercicios completados)
-        if active_exercises > 0 and active_students > 0:
-            total_attempts = db.query(func.count(ExerciseAttempt.id.distinct())).join(
-                Exercise
-            ).filter(
-                Exercise.paralelo_id == paralelo.id
-            ).scalar()
+        # Contar ejercicios completados por los estudiantes del paralelo
+        total_exercises_completed = 0
+        total_correct = 0
+        total_sessions = 0
+        avg_accuracy = 0
 
-            expected_attempts = active_students * active_exercises
-            progress = (total_attempts / expected_attempts * 100) if expected_attempts > 0 else 0
+        if student_ids:
+            # Obtener sesiones de juego del paralelo
+            sessions = db.query(GameSession).filter(
+                GameSession.paralelo_id == paralelo.id,
+                GameSession.student_id.in_(student_ids)
+            ).all()
+
+            total_sessions = len(sessions)
+            total_exercises_completed = sum(s.exercises_completed or 0 for s in sessions)
+            total_correct = sum(s.correct_answers or 0 for s in sessions)
+            total_wrong = sum(s.wrong_answers or 0 for s in sessions)
+
+            # Calcular precisión promedio
+            if total_correct + total_wrong > 0:
+                avg_accuracy = round((total_correct / (total_correct + total_wrong)) * 100, 1)
+
+        # Calcular progreso basado en actividad
+        # Progreso = porcentaje de estudiantes que han practicado al menos una vez
+        if active_students > 0:
+            students_with_activity = db.query(func.count(func.distinct(GameSession.student_id))).filter(
+                GameSession.paralelo_id == paralelo.id,
+                GameSession.student_id.in_(student_ids) if student_ids else False
+            ).scalar() or 0
+            progress = round((students_with_activity / active_students) * 100, 1)
         else:
             progress = 0
 
@@ -133,8 +153,10 @@ async def get_my_paralelos(
             "level": paralelo.level,
             "description": paralelo.description,
             "activeStudents": active_students,
-            "totalExercises": active_exercises,
-            "progress": round(progress, 1),
+            "totalExercises": total_exercises_completed,
+            "totalSessions": total_sessions,
+            "avgAccuracy": avg_accuracy,
+            "progress": progress,
             "createdAt": paralelo.created_at.isoformat()
         })
 
@@ -167,36 +189,34 @@ async def get_paralelo_students(
     for enrollment in enrollments:
         student = enrollment.student
 
-        # Obtener estadísticas del estudiante en este paralelo
-        total_exercises = db.query(func.count(Exercise.id)).filter(
-            Exercise.paralelo_id == paralelo_id,
-            Exercise.is_active == True
-        ).scalar()
-
-        completed_exercises = db.query(func.count(ExerciseAttempt.id.distinct())).join(
-            Exercise
-        ).filter(
-            Exercise.paralelo_id == paralelo_id,
-            ExerciseAttempt.student_id == student.id
-        ).scalar()
-
-        # Calcular tasa de acierto
-        attempts = db.query(ExerciseAttempt).join(Exercise).filter(
-            Exercise.paralelo_id == paralelo_id,
-            ExerciseAttempt.student_id == student.id
+        # Obtener estadísticas del estudiante usando GameSession (más confiable)
+        sessions = db.query(GameSession).filter(
+            GameSession.student_id == student.id,
+            GameSession.paralelo_id == paralelo_id
         ).all()
 
-        total_attempts = len(attempts)
-        correct_attempts = sum(1 for a in attempts if a.is_correct)
-        accuracy = (correct_attempts / total_attempts * 100) if total_attempts > 0 else 0
+        # Calcular totales desde las sesiones
+        total_exercises_completed = sum(s.exercises_completed or 0 for s in sessions)
+        total_correct = sum(s.correct_answers or 0 for s in sessions)
+        total_wrong = sum(s.wrong_answers or 0 for s in sessions)
+        total_attempts = total_correct + total_wrong
+        total_points = sum(s.total_score or 0 for s in sessions)
 
-        # Última actividad
-        last_attempt = db.query(ExerciseAttempt).join(Exercise).filter(
-            Exercise.paralelo_id == paralelo_id,
-            ExerciseAttempt.student_id == student.id
-        ).order_by(desc(ExerciseAttempt.attempted_at)).first()
+        # Calcular precisión
+        accuracy = (total_correct / total_attempts * 100) if total_attempts > 0 else 0
 
-        last_activity = last_attempt.attempted_at.isoformat() if last_attempt else None
+        # Última actividad (última sesión)
+        last_session = db.query(GameSession).filter(
+            GameSession.student_id == student.id,
+            GameSession.paralelo_id == paralelo_id
+        ).order_by(desc(GameSession.started_at)).first()
+
+        last_activity = None
+        if last_session:
+            last_activity = (last_session.ended_at or last_session.started_at).isoformat()
+
+        # Progreso basado en si ha practicado
+        progress = 100 if total_exercises_completed > 0 else 0
 
         students_data.append({
             "id": str(student.id),
@@ -204,12 +224,13 @@ async def get_paralelo_students(
             "lastName": student.last_name,
             "email": student.email,
             "enrolledAt": enrollment.enrolled_at.isoformat(),
-            "totalExercises": total_exercises,
-            "completedExercises": completed_exercises,
-            "progress": round((completed_exercises / total_exercises * 100) if total_exercises > 0 else 0, 1),
+            "totalExercises": total_exercises_completed,
+            "completedExercises": total_exercises_completed,
+            "progress": progress,
             "accuracy": round(accuracy, 1),
             "totalAttempts": total_attempts,
-            "correctAttempts": correct_attempts,
+            "correctAttempts": total_correct,
+            "totalPoints": total_points,
             "lastActivity": last_activity
         })
 
@@ -246,22 +267,42 @@ async def get_student_detailed_stats(
         if not paralelo:
             raise HTTPException(status_code=404, detail="Paralelo no encontrado o no tienes acceso")
 
-        # Filtrar por paralelo específico
-        attempts_query = db.query(ExerciseAttempt).join(Exercise).filter(
-            Exercise.paralelo_id == paralelo_id,
-            ExerciseAttempt.student_id == student_id
-        )
+        # Obtener sesiones del estudiante en este paralelo
+        sessions = db.query(GameSession).filter(
+            GameSession.student_id == student_id,
+            GameSession.paralelo_id == paralelo_id
+        ).all()
+        session_ids = [s.id for s in sessions]
+
+        # Filtrar intentos por las sesiones del paralelo
+        if session_ids:
+            attempts_query = db.query(ExerciseAttempt).filter(
+                ExerciseAttempt.student_id == student_id,
+                ExerciseAttempt.game_session_id.in_(session_ids)
+            )
+        else:
+            attempts_query = db.query(ExerciseAttempt).filter(False)  # No hay sesiones
     else:
-        # Obtener todos los intentos del estudiante en paralelos del profesor
+        # Obtener todos los paralelos del profesor
         teacher_paralelos = db.query(Paralelo.id).filter(
             Paralelo.teacher_id == current_user.id
         ).all()
         paralelo_ids = [p[0] for p in teacher_paralelos]
 
-        attempts_query = db.query(ExerciseAttempt).join(Exercise).filter(
-            Exercise.paralelo_id.in_(paralelo_ids),
-            ExerciseAttempt.student_id == student_id
-        )
+        # Obtener sesiones del estudiante en paralelos del profesor
+        sessions = db.query(GameSession).filter(
+            GameSession.student_id == student_id,
+            GameSession.paralelo_id.in_(paralelo_ids)
+        ).all()
+        session_ids = [s.id for s in sessions]
+
+        if session_ids:
+            attempts_query = db.query(ExerciseAttempt).filter(
+                ExerciseAttempt.student_id == student_id,
+                ExerciseAttempt.game_session_id.in_(session_ids)
+            )
+        else:
+            attempts_query = db.query(ExerciseAttempt).filter(False)
 
     all_attempts = attempts_query.order_by(desc(ExerciseAttempt.attempted_at)).all()
 
@@ -311,11 +352,15 @@ async def get_student_detailed_stats(
         })
 
     # Progreso en los últimos 7 días
-    seven_days_ago = datetime.now() - timedelta(days=7)
+    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
     recent_attempts_by_day = {}
 
     for attempt in all_attempts:
-        if attempt.attempted_at >= seven_days_ago:
+        # Convertir a timezone-aware si es necesario
+        attempt_time = attempt.attempted_at
+        if attempt_time.tzinfo is None:
+            attempt_time = attempt_time.replace(tzinfo=timezone.utc)
+        if attempt_time >= seven_days_ago:
             day = attempt.attempted_at.date().isoformat()
             if day not in recent_attempts_by_day:
                 recent_attempts_by_day[day] = {"total": 0, "correct": 0}
@@ -1131,6 +1176,15 @@ async def create_resource(
     current_user: User = Depends(require_teacher)
 ):
     """Crear un recurso"""
+    # Convertir paralelo_id a UUID si se proporciona
+    paralelo_uuid = None
+    paralelo_id_str = resource_data.get("paraleloId")
+    if paralelo_id_str and paralelo_id_str.strip():
+        try:
+            paralelo_uuid = UUID(paralelo_id_str)
+        except ValueError:
+            pass
+
     new_resource = Resource(
         teacher_id=current_user.id,
         title=resource_data.get("title"),
@@ -1138,7 +1192,7 @@ async def create_resource(
         url=resource_data.get("url"),
         resource_type=ResourceType(resource_data.get("resourceType", "link")),
         topic=MathTopic(resource_data.get("topic")) if resource_data.get("topic") else None,
-        paralelo_id=resource_data.get("paraleloId")
+        paralelo_id=paralelo_uuid
     )
     db.add(new_resource)
     db.commit()
@@ -1157,6 +1211,7 @@ async def upload_resource_file(
     title: str = Form(""),
     description: str = Form(""),
     topic: str = Form(""),
+    paralelo_id: str = Form(""),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_teacher)
 ):
@@ -1179,6 +1234,14 @@ async def upload_resource_file(
     with open(file_path, "wb") as f:
         f.write(contents)
 
+    # Convertir paralelo_id a UUID si se proporciona
+    paralelo_uuid = None
+    if paralelo_id and paralelo_id.strip():
+        try:
+            paralelo_uuid = UUID(paralelo_id)
+        except ValueError:
+            pass
+
     # Crear recurso en la base de datos
     new_resource = Resource(
         teacher_id=current_user.id,
@@ -1186,7 +1249,8 @@ async def upload_resource_file(
         description=description,
         url=f"/api/files/{unique_filename}",
         resource_type=ResourceType.pdf,
-        topic=MathTopic(topic) if topic else None
+        topic=MathTopic(topic) if topic else None,
+        paralelo_id=paralelo_uuid
     )
     db.add(new_resource)
     db.commit()
@@ -1228,6 +1292,15 @@ async def update_resource(
         resource.resource_type = ResourceType(resource_data["resourceType"])
     if "topic" in resource_data:
         resource.topic = MathTopic(resource_data["topic"]) if resource_data["topic"] else None
+    if "paraleloId" in resource_data:
+        paralelo_id_str = resource_data["paraleloId"]
+        if paralelo_id_str and paralelo_id_str.strip():
+            try:
+                resource.paralelo_id = UUID(paralelo_id_str)
+            except ValueError:
+                resource.paralelo_id = None
+        else:
+            resource.paralelo_id = None
 
     db.commit()
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Video, Link as LinkIcon, Eye, Search, ExternalLink, Loader2, BookOpen, X, Play } from 'lucide-react';
 import resourceService from '../../services/resourceService';
+import { getConfiguredApiUrl } from '../../services/api';
 
 const resourceTypeIcons = {
   pdf: FileText,
@@ -36,9 +37,23 @@ const isYouTubeUrl = (url) => {
 
 // Componente para ver recursos embebidos
 const ResourceViewer = ({ resource, onClose }) => {
+  const apiUrl = getConfiguredApiUrl().replace('/api', '');
   const isYouTube = isYouTubeUrl(resource.url);
   const youtubeId = getYouTubeVideoId(resource.url);
   const isPDF = resource.resourceType === 'pdf' || resource.url?.toLowerCase().endsWith('.pdf');
+
+  // Construir URL completa para PDFs locales
+  const getPdfUrl = () => {
+    if (!resource.url) return null;
+    if (resource.url.startsWith('/api/files/')) {
+      return `${apiUrl}${resource.url}`;
+    }
+    if (resource.url.startsWith('http')) {
+      return resource.url;
+    }
+    // Si es una ruta relativa, agregar el apiUrl
+    return `${apiUrl}${resource.url}`;
+  };
 
   return (
     <motion.div
@@ -81,12 +96,26 @@ const ResourceViewer = ({ resource, onClose }) => {
               allowFullScreen
             />
           ) : isPDF ? (
-            <iframe
-              src={`${resource.url}#toolbar=1&navpanes=0&scrollbar=1`}
-              title={resource.title}
-              className="w-full h-full rounded-lg"
-              frameBorder="0"
-            />
+            <div className="flex flex-col items-center justify-center h-full">
+              <FileText className="w-20 h-20 text-indigo-500 mb-6" />
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">{resource.title}</h3>
+              <p className="text-gray-500 mb-6 text-center max-w-md">
+                {resource.description || 'Documento PDF'}
+              </p>
+              {getPdfUrl() ? (
+                <a
+                  href={getPdfUrl()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  <ExternalLink className="w-5 h-5" />
+                  Abrir PDF en nueva pestaña
+                </a>
+              ) : (
+                <p className="text-red-500">No se pudo cargar el PDF</p>
+              )}
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full">
               <ExternalLink className="w-16 h-16 text-gray-300 mb-4" />
