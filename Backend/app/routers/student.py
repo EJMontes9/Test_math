@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_
 from typing import Optional
 from uuid import UUID
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import get_db
 from app.models import (
     User, UserRole, GameSession, Exercise, ExerciseAttempt,
@@ -31,7 +31,7 @@ def require_student(current_user: User = Depends(get_current_user)):
 
 def update_student_goals_progress(student_id: UUID, topic: MathTopic, is_correct: bool, db: Session):
     """Actualizar el progreso de las metas del estudiante despues de cada ejercicio"""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # Obtener metas activas del estudiante
     active_goals = db.query(StudentGoal).join(Goal).filter(
@@ -324,7 +324,7 @@ async def end_game_session(
         raise HTTPException(status_code=404, detail="Sesión no encontrada")
 
     session.is_active = False
-    session.ended_at = datetime.now()
+    session.ended_at = datetime.now(timezone.utc)
 
     db.commit()
 
@@ -559,7 +559,7 @@ async def get_challenges(
     current_user: User = Depends(require_student)
 ):
     """Obtener desafios (versus) disponibles para el estudiante - Sistema de paralelos vs paralelos"""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # Obtener paralelo del estudiante
     enrollment = db.query(Enrollment).filter(
@@ -781,7 +781,7 @@ async def get_challenge_exercise(
     if participant.exercises_completed >= challenge.num_exercises:
         if not participant.has_finished:
             participant.has_finished = True
-            participant.finished_at = datetime.now()
+            participant.finished_at = datetime.now(timezone.utc)
             db.commit()
         return APIResponse(
             success=True,
@@ -901,7 +901,7 @@ async def submit_challenge_answer(
     # Verificar si termino
     if participant.exercises_completed >= challenge.num_exercises:
         participant.has_finished = True
-        participant.finished_at = datetime.now()
+        participant.finished_at = datetime.now(timezone.utc)
 
     # Guardar intento
     attempt = ExerciseAttempt(
@@ -945,7 +945,7 @@ async def get_student_goals(
     current_user: User = Depends(require_student)
 ):
     """Obtener metas del estudiante"""
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # Obtener paralelo del estudiante
     enrollment = db.query(Enrollment).filter(
