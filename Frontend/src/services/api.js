@@ -48,10 +48,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expirado o inválido
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      // NO redirigir si es el endpoint de login (credenciales incorrectas)
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
+
+      if (!isLoginRequest) {
+        // Token expirado o inválido en otras rutas - redirigir a login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      // Si es login, dejar que el error sea manejado por authService
     }
     return Promise.reject(error);
   }

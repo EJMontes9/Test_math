@@ -44,20 +44,48 @@ const authService = {
       console.error('❌ Error data:', error.response?.data);
       console.error('❌ Error message:', error.message);
 
-      // Manejar errores de validación (422)
+      // Manejar diferentes tipos de errores
       let message;
-      if (error.response?.status === 422) {
-        const errors = error.response?.data?.errors;
-        if (errors && errors.length > 0) {
-          // Mostrar el primer error de validación
-          const firstError = errors[0];
-          message = firstError.msg || firstError.message || 'Por favor verifica que el email y contraseña sean válidos';
+      const status = error.response?.status;
+
+      if (status === 422) {
+        // Errores de validación - traducir mensajes comunes de Pydantic
+        const detail = error.response?.data?.detail;
+        if (Array.isArray(detail)) {
+          const firstError = detail[0];
+          const errorMsg = firstError?.msg || '';
+
+          // Traducir mensajes comunes de validación de email
+          if (errorMsg.includes('not a valid email') || errorMsg.includes('email address is not valid')) {
+            message = 'El correo electrónico no es válido. Debe tener el formato: usuario@dominio.com';
+          } else if (errorMsg.includes('field required')) {
+            message = 'Por favor completa todos los campos requeridos.';
+          } else {
+            message = 'Por favor verifica que el correo y contraseña sean válidos.';
+          }
+        } else if (typeof detail === 'string') {
+          if (detail.includes('email')) {
+            message = 'El correo electrónico no es válido. Debe tener el formato: usuario@dominio.com';
+          } else {
+            message = detail;
+          }
         } else {
-          message = 'Por favor ingresa un email válido (ej: usuario@dominio.com)';
+          message = 'Por favor ingresa un correo electrónico válido (ej: usuario@dominio.com)';
         }
-      } else if (error.response?.status === 401) {
-        message = 'Email o contraseña incorrectos';
+      } else if (status === 401) {
+        // Credenciales incorrectas
+        message = 'Correo electrónico o contraseña incorrectos. Por favor, verifica tus datos e intenta nuevamente.';
+      } else if (status === 403) {
+        // Usuario inactivo
+        message = error.response?.data?.detail || 'Tu cuenta está inactiva. Contacta al administrador.';
+      } else if (status === 404) {
+        // Usuario no encontrado
+        message = 'No existe una cuenta con este correo electrónico.';
+      } else if (!error.response) {
+        // Error de red/conexión
+        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.';
       } else {
+        // Otros errores
         message = error.response?.data?.message
           || error.response?.data?.detail
           || error.message
@@ -71,9 +99,24 @@ const authService = {
 
   // Logout
   logout: () => {
+    // Solo mantener el email recordado si el usuario actual es el mismo que lo guardó
     const rememberedEmail = localStorage.getItem('rememberedEmail');
+    const currentUser = localStorage.getItem('user');
+    let shouldKeepEmail = false;
+
+    if (rememberedEmail && currentUser) {
+      try {
+        const user = JSON.parse(currentUser);
+        // Solo mantener si el email coincide con el usuario actual
+        shouldKeepEmail = user.email === rememberedEmail;
+      } catch (e) {
+        shouldKeepEmail = false;
+      }
+    }
+
     localStorage.clear();
-    if (rememberedEmail) {
+
+    if (shouldKeepEmail && rememberedEmail) {
       localStorage.setItem('rememberedEmail', rememberedEmail);
     }
   },

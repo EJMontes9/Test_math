@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Settings as SettingsIcon, Save, RefreshCw, Database, Shield, BookOpen, Palette } from 'lucide-react';
+import { Settings as SettingsIcon, Save, RefreshCw, Database, Shield, Palette } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import settingService from '../../services/settingService';
 import { useSettings } from '../../context/SettingsContext';
@@ -15,7 +15,6 @@ const Settings = () => {
 
   const tabs = [
     { id: 'application', label: 'Aplicación', icon: Palette },
-    { id: 'exercises', label: 'Ejercicios', icon: BookOpen },
     { id: 'security', label: 'Seguridad', icon: Shield }
   ];
 
@@ -217,49 +216,6 @@ const Settings = () => {
               className="space-y-6"
             >
               <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Información de la Institución</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Nombre de la Institución
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.app_name || ''}
-                      onChange={(e) => handleChange('app_name', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Año Lectivo
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.academic_year || ''}
-                      onChange={(e) => handleChange('academic_year', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="2025"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Período Académico
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.academic_period || ''}
-                      onChange={(e) => handleChange('academic_period', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      placeholder="Primer Trimestre"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-4">Personalización del Tema</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -300,77 +256,6 @@ const Settings = () => {
                         className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Configuración de Ejercicios */}
-          {activeTab === 'exercises' && (
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="space-y-6"
-            >
-              <div>
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Configuración de Ejercicios</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Dificultad Por Defecto
-                    </label>
-                    <select
-                      value={formData.exercise_default_difficulty || 'medium'}
-                      onChange={(e) => handleChange('exercise_default_difficulty', e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="easy">Fácil</option>
-                      <option value="medium">Medio</option>
-                      <option value="hard">Difícil</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Tiempo Límite (minutos)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.exercise_time_limit || 30}
-                      onChange={(e) => handleChange('exercise_time_limit', parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      min="5"
-                      max="120"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Puntuación Mínima (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.exercise_pass_score || 70}
-                      onChange={(e) => handleChange('exercise_pass_score', parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      min="0"
-                      max="100"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Intentos Máximos
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.exercise_max_attempts || 3}
-                      onChange={(e) => handleChange('exercise_max_attempts', parseInt(e.target.value))}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      min="1"
-                      max="10"
-                    />
                   </div>
                 </div>
               </div>

@@ -49,6 +49,24 @@ const Login = () => {
       e.stopPropagation();
     }
 
+    // Validaciones del formulario
+    if (!email.trim()) {
+      setError('Por favor, ingresa tu correo electrónico.');
+      return;
+    }
+
+    if (!password) {
+      setError('Por favor, ingresa tu contraseña.');
+      return;
+    }
+
+    // Validar formato de email básico
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      setError('Por favor, ingresa un correo electrónico válido.');
+      return;
+    }
+
     console.log('🔐 Intentando login con:', { email, password: '***' });
 
     setError('');

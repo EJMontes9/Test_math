@@ -1497,10 +1497,14 @@ def generate_pdf_report(title: str, teacher_name: str, paralelo_name: str, stude
     )
 
     # Titulo principal
+    # Usar zona horaria de Ecuador (UTC-5)
+    ecuador_tz = timezone(timedelta(hours=-5))
+    fecha_local = datetime.now(ecuador_tz)
+
     elements.append(Paragraph("MathMaster - Reporte de Estudiantes", title_style))
     elements.append(Paragraph(f"Paralelo: {paralelo_name}", subtitle_style))
     elements.append(Paragraph(f"Profesor: {teacher_name}", subtitle_style))
-    elements.append(Paragraph(f"Fecha: {datetime.now().strftime('%d/%m/%Y %H:%M')}", subtitle_style))
+    elements.append(Paragraph(f"Fecha: {fecha_local.strftime('%d/%m/%Y %H:%M')}", subtitle_style))
     elements.append(Spacer(1, 20))
 
     # Resumen general
@@ -1685,8 +1689,10 @@ async def generate_paralelo_report_pdf(
         summary=summary
     )
 
-    # Nombre del archivo
-    filename = f"reporte_{paralelo.name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    # Nombre del archivo (usar zona horaria de Ecuador UTC-5)
+    ecuador_tz = timezone(timedelta(hours=-5))
+    fecha_local = datetime.now(ecuador_tz)
+    filename = f"reporte_{paralelo.name.replace(' ', '_')}_{fecha_local.strftime('%Y%m%d')}.pdf"
 
     return StreamingResponse(
         pdf_buffer,
@@ -1760,7 +1766,10 @@ async def generate_student_report_pdf(
         summary=summary
     )
 
-    filename = f"reporte_{student.first_name}_{student.last_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+    # Usar zona horaria de Ecuador (UTC-5)
+    ecuador_tz = timezone(timedelta(hours=-5))
+    fecha_local = datetime.now(ecuador_tz)
+    filename = f"reporte_{student.first_name}_{student.last_name}_{fecha_local.strftime('%Y%m%d')}.pdf"
 
     return StreamingResponse(
         pdf_buffer,
