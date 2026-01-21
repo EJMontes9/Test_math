@@ -8,14 +8,14 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements
-COPY requirements.txt .
+# Copiar requirements desde Backend/
+COPY Backend/requirements.txt .
 
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código
-COPY . .
+# Copiar código desde Backend/
+COPY Backend/app ./app
 
 # Crear directorios necesarios
 RUN mkdir -p /app/uploads /app/static/avatars
@@ -26,8 +26,8 @@ RUN useradd -m -u 1001 fastapi && \
 
 USER fastapi
 
-# Exponer puerto
+# Puerto (Railway usa la variable PORT)
 EXPOSE 3000
 
 # Comando para iniciar
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3000", "--reload"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3000}"]
