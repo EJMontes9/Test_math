@@ -31,14 +31,28 @@ app = FastAPI(
     redoc_url="/redoc" if settings.NODE_ENV == "development" else None
 )
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS_LIST + ["*"],  # Permitir localhost y cualquier origen en desarrollo
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS - Configuración para Railway y desarrollo local
+cors_origins = settings.CORS_ORIGINS_LIST + [
+    "https://steadfast-generosity-production.up.railway.app",  # Frontend en Railway
+]
+
+# En desarrollo, permitir cualquier origen
+if settings.NODE_ENV == "development":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Rate limiting - Solo en producción
 if settings.NODE_ENV == "production":
