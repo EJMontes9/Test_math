@@ -16,9 +16,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar código desde Backend/
 COPY Backend/app ./app
+COPY Backend/create_default_users.py .
+COPY Backend/start.sh .
 
 # Crear directorios necesarios
 RUN mkdir -p /app/uploads /app/static/avatars
+
+# Dar permisos de ejecución al script
+RUN chmod +x start.sh
 
 # Crear usuario no-root y dar permisos
 RUN useradd -m -u 1001 fastapi && \
@@ -29,5 +34,5 @@ USER fastapi
 # Puerto (Railway usa la variable PORT)
 EXPOSE 3000
 
-# Comando para iniciar
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-3000}"]
+# Comando para iniciar (ejecuta script que crea usuarios e inicia servidor)
+CMD ["./start.sh"]
