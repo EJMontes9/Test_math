@@ -5,13 +5,19 @@ import os
 # Agregar el directorio raíz al path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from app.database import SessionLocal
+from app.database import SessionLocal, engine, Base
 from app.models import User, UserRole
 from app.auth import get_password_hash
 
 
 def create_default_users():
     """Crear usuarios por defecto"""
+
+    # Crear tablas si no existen
+    print("📦 Creando tablas en la base de datos...")
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tablas creadas/verificadas")
+
     db = SessionLocal()
 
     try:
