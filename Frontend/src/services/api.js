@@ -5,12 +5,21 @@ import axios from 'axios';
 export const getApiUrl = () => {
   const customUrl = localStorage.getItem('API_URL');
   if (customUrl) {
+    // Forzar HTTPS si estamos en producción
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      return customUrl.replace('http://', 'https://');
+    }
     return customUrl;
   }
 
   // Si hay variable de entorno, usarla
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    let url = import.meta.env.VITE_API_URL;
+    // Forzar HTTPS si estamos en producción
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+      url = url.replace('http://', 'https://');
+    }
+    return url;
   }
 
   // Auto-detectar: si estamos en HTTPS (producción), usar URL de producción
