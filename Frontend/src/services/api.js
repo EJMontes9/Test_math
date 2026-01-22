@@ -7,7 +7,19 @@ export const getApiUrl = () => {
   if (customUrl) {
     return customUrl;
   }
-  return import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+  // Si hay variable de entorno, usarla
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Auto-detectar: si estamos en HTTPS (producción), usar URL de producción
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    return 'https://magnificent-love-production.up.railway.app/api';
+  }
+
+  // Desarrollo local
+  return 'http://localhost:3000/api';
 };
 
 // Exportar funcion para actualizar la URL dinamicamente
