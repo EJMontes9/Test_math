@@ -50,7 +50,15 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Establecer baseURL dinamicamente en cada request
-    config.baseURL = getApiUrl();
+    const url = getApiUrl();
+    console.log('🔗 API Request:', {
+      endpoint: config.url,
+      baseURL: url,
+      hostname: window.location.hostname,
+      isLocal: isLocalhost(),
+      localStorage: localStorage.getItem('API_URL')
+    });
+    config.baseURL = url;
 
     // Agregar token si existe
     const token = localStorage.getItem('token');
