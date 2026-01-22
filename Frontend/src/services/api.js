@@ -1,32 +1,34 @@
 import axios from 'axios';
 
-// URL de producción - SIEMPRE HTTPS
+// URLs
 const PRODUCTION_API_URL = 'https://magnificent-love-production.up.railway.app/api';
 const LOCAL_API_URL = 'http://localhost:3000/api';
 
+// Detectar si estamos en desarrollo local
+const isLocalhost = () => {
+  try {
+    const host = window.location.hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
+  } catch {
+    return false;
+  }
+};
+
 // URL base del API
 export const getApiUrl = () => {
-  // Si estamos en HTTPS (producción), SIEMPRE usar URL de producción con HTTPS
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    // Permitir override desde localStorage solo si es HTTPS
-    const customUrl = localStorage.getItem('API_URL');
-    if (customUrl && customUrl.startsWith('https://')) {
-      return customUrl;
-    }
-    return PRODUCTION_API_URL;
-  }
-
-  // Desarrollo local - permitir customUrl o variable de entorno
+  // Primero verificar localStorage para override manual
   const customUrl = localStorage.getItem('API_URL');
   if (customUrl) {
     return customUrl;
   }
 
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+  // Si estamos en localhost, usar URL local
+  if (isLocalhost()) {
+    return import.meta.env.VITE_API_URL || LOCAL_API_URL;
   }
 
-  return LOCAL_API_URL;
+  // Por defecto (producción), SIEMPRE usar HTTPS
+  return PRODUCTION_API_URL;
 };
 
 // Exportar funcion para actualizar la URL dinamicamente
