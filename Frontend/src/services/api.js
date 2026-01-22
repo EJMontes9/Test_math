@@ -1,34 +1,32 @@
 import axios from 'axios';
 
-// URL base del API - funcion que siempre lee de localStorage
-// Para demos con tunel de Cloudflare
+// URL de producción - SIEMPRE HTTPS
+const PRODUCTION_API_URL = 'https://magnificent-love-production.up.railway.app/api';
+const LOCAL_API_URL = 'http://localhost:3000/api';
+
+// URL base del API
 export const getApiUrl = () => {
+  // Si estamos en HTTPS (producción), SIEMPRE usar URL de producción con HTTPS
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    // Permitir override desde localStorage solo si es HTTPS
+    const customUrl = localStorage.getItem('API_URL');
+    if (customUrl && customUrl.startsWith('https://')) {
+      return customUrl;
+    }
+    return PRODUCTION_API_URL;
+  }
+
+  // Desarrollo local - permitir customUrl o variable de entorno
   const customUrl = localStorage.getItem('API_URL');
   if (customUrl) {
-    // Forzar HTTPS si estamos en producción
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      return customUrl.replace('http://', 'https://');
-    }
     return customUrl;
   }
 
-  // Si hay variable de entorno, usarla
   if (import.meta.env.VITE_API_URL) {
-    let url = import.meta.env.VITE_API_URL;
-    // Forzar HTTPS si estamos en producción
-    if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-      url = url.replace('http://', 'https://');
-    }
-    return url;
+    return import.meta.env.VITE_API_URL;
   }
 
-  // Auto-detectar: si estamos en HTTPS (producción), usar URL de producción
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    return 'https://magnificent-love-production.up.railway.app/api';
-  }
-
-  // Desarrollo local
-  return 'http://localhost:3000/api';
+  return LOCAL_API_URL;
 };
 
 // Exportar funcion para actualizar la URL dinamicamente
