@@ -23,12 +23,14 @@ Base.metadata.create_all(bind=engine)
 limiter = Limiter(key_func=get_remote_address)
 
 # Crear app
+# redirect_slashes=False evita redirects 307 que pueden causar problemas con HTTPS en Railway
 app = FastAPI(
     title="MathMaster API",
     description="API REST para plataforma educativa de matemáticas",
     version="2.0.0",
     docs_url="/docs" if settings.NODE_ENV == "development" else None,
-    redoc_url="/redoc" if settings.NODE_ENV == "development" else None
+    redoc_url="/redoc" if settings.NODE_ENV == "development" else None,
+    redirect_slashes=False
 )
 
 # CORS - Configuración para Railway y desarrollo local
