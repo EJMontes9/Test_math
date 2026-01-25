@@ -17,7 +17,7 @@ class AssignStudentsRequest(BaseModel):
     student_ids: List[UUID]
 
 
-@router.get("/", response_model=APIResponse)
+@router.get("", response_model=APIResponse)
 async def get_paralelos(
     search: Optional[str] = None,
     status: Optional[str] = None,
@@ -140,7 +140,7 @@ async def get_paralelo(
     return APIResponse(success=True, data=paralelo_data)
 
 
-@router.post("/", response_model=APIResponse)
+@router.post("", response_model=APIResponse)
 async def create_paralelo(
     paralelo_data: ParaleloCreate,
     db: Session = Depends(get_db),
