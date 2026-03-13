@@ -1,31 +1,34 @@
 # Build stage
 FROM node:20-alpine AS builder
 
-# Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Argumento para la URL del API (se pasa desde Railway)
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
+# Copiar package files desde Frontend/
+COPY Frontend/package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy source code
-COPY . .
+# Copiar source code desde Frontend/
+COPY Frontend/ .
 
-# Build the application
-RUN npm run build
+# Build the application (Vite usará VITE_API_URL del ENV)
+RUN echo "Building with VITE_API_URL=$VITE_API_URL" && npm run build
 
 # Production stage
 FROM nginx:alpine
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy custom nginx config desde Frontend/
+COPY Frontend/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copy built assets from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Expose port (Railway will use PORT env variable)
+# Puerto (Railway usa variable PORT, nginx usa 8080 por defecto)
 EXPOSE 8080
 
 # Health check

@@ -11,7 +11,7 @@ from app.auth import get_password_hash, require_admin
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
 
-@router.get("/", response_model=APIResponse)
+@router.get("", response_model=APIResponse)
 async def get_users(
     role: Optional[str] = None,
     status: Optional[str] = None,
@@ -112,7 +112,7 @@ async def get_user(
     return APIResponse(success=True, data=user_data)
 
 
-@router.post("/", response_model=APIResponse)
+@router.post("", response_model=APIResponse)
 async def create_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),

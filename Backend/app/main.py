@@ -24,22 +24,38 @@ Base.metadata.create_all(bind=engine)
 limiter = Limiter(key_func=get_remote_address)
 
 # Crear app
+# redirect_slashes=False evita redirects 307 que pueden causar problemas con HTTPS en Railway
 app = FastAPI(
     title="MathMaster API",
     description="API REST para plataforma educativa de matemáticas",
     version="2.0.0",
     docs_url="/docs" if settings.NODE_ENV == "development" else None,
-    redoc_url="/redoc" if settings.NODE_ENV == "development" else None
+    redoc_url="/redoc" if settings.NODE_ENV == "development" else None,
+    redirect_slashes=False
 )
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS_LIST + ["*"],  # Permitir localhost y cualquier origen en desarrollo
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS - Configuración para Railway y desarrollo local
+cors_origins = settings.CORS_ORIGINS_LIST + [
+    "https://steadfast-generosity-production.up.railway.app",  # Frontend en Railway
+]
+
+# En desarrollo, permitir cualquier origen
+if settings.NODE_ENV == "development":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Rate limiting - Solo en producción
 if settings.NODE_ENV == "production":

@@ -1,13 +1,34 @@
 import axios from 'axios';
 
-// URL base del API - funcion que siempre lee de localStorage
-// Para demos con tunel de Cloudflare
+// URLs
+const PRODUCTION_API_URL = 'https://magnificent-love-production.up.railway.app/api';
+const LOCAL_API_URL = 'http://localhost:3000/api';
+
+// Detectar si estamos en desarrollo local
+const isLocalhost = () => {
+  try {
+    const host = window.location.hostname;
+    return host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.');
+  } catch {
+    return false;
+  }
+};
+
+// URL base del API
 export const getApiUrl = () => {
+  // Primero verificar localStorage para override manual
   const customUrl = localStorage.getItem('API_URL');
   if (customUrl) {
     return customUrl;
   }
-  return import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+
+  // Si estamos en localhost, usar URL local
+  if (isLocalhost()) {
+    return import.meta.env.VITE_API_URL || LOCAL_API_URL;
+  }
+
+  // Por defecto (producción), SIEMPRE usar HTTPS
+  return PRODUCTION_API_URL;
 };
 
 // Exportar funcion para actualizar la URL dinamicamente
@@ -29,7 +50,15 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     // Establecer baseURL dinamicamente en cada request
-    config.baseURL = getApiUrl();
+    const url = getApiUrl();
+    console.log('🔗 API Request:', {
+      endpoint: config.url,
+      baseURL: url,
+      hostname: window.location.hostname,
+      isLocal: isLocalhost(),
+      localStorage: localStorage.getItem('API_URL')
+    });
+    config.baseURL = url;
 
     // Agregar token si existe
     const token = localStorage.getItem('token');

@@ -67,7 +67,7 @@ def stringify_value(value, value_type: SettingType) -> str:
         return str(value)
 
 
-@router.get("/", response_model=APIResponse)
+@router.get("", response_model=APIResponse)
 async def get_all_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin)
