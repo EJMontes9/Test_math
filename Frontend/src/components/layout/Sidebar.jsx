@@ -17,7 +17,8 @@ import {
   Award,
   FileText,
   BarChart3,
-  Download
+  Download,
+  Info
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -110,6 +111,32 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
       label: 'Reportes',
       role: ['teacher']
     },
+    {
+      path: '/teacher/badges',
+      icon: Award,
+      label: 'Insignias',
+      role: ['teacher']
+    },
+
+    // Acerca de Nosotros - todos los roles
+    {
+      path: '/admin/about',
+      icon: Info,
+      label: 'Acerca de Nosotros',
+      role: ['admin']
+    },
+    {
+      path: '/teacher/about',
+      icon: Info,
+      label: 'Acerca de Nosotros',
+      role: ['teacher']
+    },
+    {
+      path: '/student/about',
+      icon: Info,
+      label: 'Acerca de Nosotros',
+      role: ['student']
+    },
 
     // Student menu
     {
@@ -191,7 +218,7 @@ const Sidebar = ({ isOpen, setIsOpen }) => {
                   <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold">{settings.app_name || 'MathMaster'}</h1>
+                  <h1 className="text-xl font-bold">{settings.app_name || 'José de Villamil'}</h1>
                   <p className="text-xs text-white/70">
                     {user?.role === 'admin' ? 'Admin Panel' : user?.role === 'teacher' ? 'Panel Profesor' : 'Panel Estudiante'}
                   </p>

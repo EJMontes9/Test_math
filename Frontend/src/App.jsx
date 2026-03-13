@@ -28,6 +28,8 @@ import StudentChallenges from './pages/student/Challenges';
 import StudentBadges from './pages/student/Badges';
 import StudentResources from './pages/student/Resources';
 import Profile from './pages/Profile';
+import AboutUs from './pages/AboutUs';
+import TeacherBadges from './pages/teacher/Badges';
 
 function App() {
   return (
@@ -47,6 +49,7 @@ function App() {
           <Route path="paralelos" element={<Paralelos />} />
           <Route path="settings" element={<Settings />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="about" element={<AboutUs />} />
         </Route>
 
         {/* Teacher Routes */}
@@ -62,7 +65,9 @@ function App() {
           <Route path="resources" element={<TeacherResources />} />
           <Route path="performance" element={<TeacherPerformance />} />
           <Route path="reports" element={<TeacherReports />} />
+          <Route path="badges" element={<TeacherBadges />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="about" element={<AboutUs />} />
         </Route>
 
         {/* Student Routes */}
@@ -76,6 +81,7 @@ function App() {
           <Route path="badges" element={<StudentBadges />} />
           <Route path="resources" element={<StudentResources />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="about" element={<AboutUs />} />
         </Route>
 
         {/* Unauthorized */}

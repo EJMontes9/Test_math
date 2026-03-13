@@ -35,6 +35,7 @@ class GoalCreate(BaseModel):
     target_value: int = Field(alias="targetValue")
     topic: Optional[MathTopic] = None
     reward_points: int = Field(default=100, alias="rewardPoints")
+    badge_id: Optional[UUID] = Field(None, alias="badgeId")
     paralelo_id: Optional[UUID] = Field(None, alias="paraleloId")
     start_date: datetime = Field(alias="startDate")
     end_date: datetime = Field(alias="endDate")
@@ -506,7 +507,10 @@ async def get_goals(
             "totalAssigned": total_assigned,
             "completedCount": completed_count,
             "avgProgress": round(avg_progress, 1),
-            "createdAt": goal.created_at.isoformat()
+            "createdAt": goal.created_at.isoformat(),
+            "badgeId": str(goal.badge_id) if goal.badge_id else None,
+            "badgeName": goal.badge.name if goal.badge else None,
+            "badgeIcon": goal.badge.icon if goal.badge else None,
         })
 
     return APIResponse(success=True, data=goals_data)
@@ -532,6 +536,13 @@ async def create_goal(
         if not paralelo:
             raise HTTPException(status_code=404, detail="Paralelo no encontrado")
 
+    # Validar insignia si se especifica
+    if goal_data.badge_id:
+        from app.models import Badge
+        badge = db.query(Badge).filter(Badge.id == goal_data.badge_id, Badge.is_active == True).first()
+        if not badge:
+            raise HTTPException(status_code=404, detail="Insignia no encontrada")
+
     # Crear la meta
     new_goal = Goal(
         teacher_id=current_user.id,
@@ -542,6 +553,7 @@ async def create_goal(
         target_value=goal_data.target_value,
         topic=goal_data.topic,
         reward_points=goal_data.reward_points,
+        badge_id=goal_data.badge_id,
         start_date=goal_data.start_date,
         end_date=goal_data.end_date
     )
@@ -1807,3 +1819,5 @@ async def get_available_reports(
         })
 
     return APIResponse(success=True, data=reports)
+
+

@@ -13,6 +13,7 @@ from app.config import get_settings
 from app.database import engine, Base
 from app.routers import auth, users, paralelos, teacher, student
 from app.routers import settings as settings_router
+from app.routers import badges as badges_router
 
 settings = get_settings()
 
@@ -124,6 +125,7 @@ app.include_router(paralelos.router)
 app.include_router(teacher.router)
 app.include_router(student.router)
 app.include_router(settings_router.router)
+app.include_router(badges_router.router)
 
 # Servir archivos estáticos (avatares, etc.)
 os.makedirs("static/avatars", exist_ok=True)

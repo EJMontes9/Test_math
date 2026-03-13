@@ -256,7 +256,7 @@ const Login = () => {
                 }}
                 className="w-24 h-24 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden"
               >
-                <img src={logoImg} alt="MathMaster Logo" className="w-full h-full object-contain" />
+                <img src={logoImg} alt="José de Villamil Logo" className="w-full h-full object-contain" />
               </motion.div>
               <motion.div
                 animate={{
@@ -271,7 +271,7 @@ const Login = () => {
               />
             </div>
             <h1 className="mt-6 text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              MathMaster
+              José de Villamil
             </h1>
             <p className="mt-2 text-gray-700 text-center font-medium">
               Domina las operaciones y ecuaciones

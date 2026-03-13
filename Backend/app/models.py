@@ -240,6 +240,7 @@ class Goal(Base):
     target_value = Column(Integer, nullable=False)  # Valor objetivo (ej: 10 ejercicios, 80% precision)
     topic = Column(SQLEnum(MathTopic), nullable=True)  # Solo para topic_mastery
     reward_points = Column(Integer, default=100)  # Puntos de recompensa
+    badge_id = Column(UUID(as_uuid=True), ForeignKey("badges.id"), nullable=True)  # Insignia opcional al completar
     start_date = Column(DateTime(timezone=True), nullable=False)
     end_date = Column(DateTime(timezone=True), nullable=False)
     is_active = Column(Boolean, default=True)
@@ -249,6 +250,7 @@ class Goal(Base):
     # Relationships
     teacher = relationship("User", foreign_keys=[teacher_id])
     paralelo = relationship("Paralelo")
+    badge = relationship("Badge", foreign_keys=[badge_id])
     student_goals = relationship("StudentGoal", back_populates="goal", cascade="all, delete-orphan")
 
 
@@ -343,6 +345,7 @@ class Badge(Base):
     __tablename__ = "badges"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    teacher_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)  # Null = insignia global del sistema
     name = Column(String, nullable=False)
     description = Column(Text, nullable=True)
     icon = Column(String, nullable=True)  # Nombre del icono o URL
@@ -354,6 +357,7 @@ class Badge(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
+    teacher = relationship("User", foreign_keys=[teacher_id])
     student_badges = relationship("StudentBadge", back_populates="badge", cascade="all, delete-orphan")
 
 

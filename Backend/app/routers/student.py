@@ -109,8 +109,70 @@ def update_student_goals_progress(student_id: UUID, topic: MathTopic, is_correct
             student_goal.status = GoalStatus.completed
             student_goal.completed_at = now
             student_goal.points_earned = goal.reward_points
+            db.flush()  # Persistir el estado completed antes de contar
+            # Otorgar la insignia específica configurada en la meta
+            if goal.badge_id:
+                _grant_specific_badge(student_id, goal.badge_id, db)
+            # Otorgar insignias genéricas por número de metas completadas
+            _grant_goal_badges(student_id, db)
 
     db.flush()
+
+
+def _grant_specific_badge(student_id: UUID, badge_id: UUID, db: Session):
+    """Otorgar una insignia específica al estudiante si no la tiene ya"""
+    from app.models import Badge, StudentBadge
+    already_has = db.query(StudentBadge).filter(
+        StudentBadge.student_id == student_id,
+        StudentBadge.badge_id == badge_id
+    ).first()
+    if not already_has:
+        badge = db.query(Badge).filter(Badge.id == badge_id, Badge.is_active == True).first()
+        if badge:
+            db.add(StudentBadge(student_id=student_id, badge_id=badge_id, is_equipped=False))
+
+
+def _grant_goal_badges(student_id: UUID, db: Session):
+    """Otorgar insignias automáticamente cuando se completan metas"""
+    from app.models import Badge, StudentBadge
+
+    # Metas completadas por el estudiante
+    total_goals_completed = db.query(func.count(StudentGoal.id)).filter(
+        StudentGoal.student_id == student_id,
+        StudentGoal.status == GoalStatus.completed
+    ).scalar() or 0
+
+    # Insignias que el estudiante ya tiene
+    existing_badge_ids = db.query(StudentBadge.badge_id).filter(
+        StudentBadge.student_id == student_id
+    ).all()
+    existing_ids = [str(b[0]) for b in existing_badge_ids]
+
+    # Insignias disponibles por metas
+    goal_badges_query = db.query(Badge).filter(
+        Badge.is_active == True,
+        Badge.requirement.in_(["goals_completed", "first_goal"])
+    )
+    if existing_ids:
+        goal_badges_query = goal_badges_query.filter(
+            ~Badge.id.in_([UUID(id) for id in existing_ids])
+        )
+    goal_badges = goal_badges_query.all()
+
+    for badge in goal_badges:
+        earned = False
+        value = badge.requirement_value or 0
+        if badge.requirement == "first_goal" and total_goals_completed >= 1:
+            earned = True
+        elif badge.requirement == "goals_completed" and total_goals_completed >= value:
+            earned = True
+
+        if earned:
+            db.add(StudentBadge(
+                student_id=student_id,
+                badge_id=badge.id,
+                is_equipped=False
+            ))
 
 
 @router.post("/game/start", response_model=APIResponse)
@@ -1218,10 +1280,12 @@ async def check_achievements(
     ).all()
     existing_ids = [str(b[0]) for b in existing_badge_ids]
 
-    available_badges = db.query(Badge).filter(
-        Badge.is_active == True,
-        ~Badge.id.in_([UUID(id) for id in existing_ids]) if existing_ids else True
-    ).all()
+    available_badges_query = db.query(Badge).filter(Badge.is_active == True)
+    if existing_ids:
+        available_badges_query = available_badges_query.filter(
+            ~Badge.id.in_([UUID(id) for id in existing_ids])
+        )
+    available_badges = available_badges_query.all()
 
     # Obtener estadisticas del estudiante
     total_sessions = db.query(func.count(GameSession.id)).filter(
@@ -1232,8 +1296,15 @@ async def check_achievements(
         GameSession.student_id == current_user.id
     ).scalar() or 0
 
-    total_exercises = db.query(func.sum(GameSession.total_questions)).filter(
+    total_exercises = db.query(func.sum(GameSession.exercises_completed)).filter(
         GameSession.student_id == current_user.id
+    ).scalar() or 0
+
+    # Contar metas completadas por el estudiante
+    from app.models import StudentGoal, GoalStatus
+    total_goals_completed = db.query(func.count(StudentGoal.id)).filter(
+        StudentGoal.student_id == current_user.id,
+        StudentGoal.status == GoalStatus.completed
     ).scalar() or 0
 
     # Verificar cada insignia
@@ -1249,6 +1320,10 @@ async def check_achievements(
         elif requirement == "correct_streak" and total_correct >= value:
             earned = True
         elif requirement == "sessions_count" and total_sessions >= value:
+            earned = True
+        elif requirement == "goals_completed" and total_goals_completed >= value:
+            earned = True
+        elif requirement == "first_goal" and total_goals_completed >= 1:
             earned = True
 
         if earned:

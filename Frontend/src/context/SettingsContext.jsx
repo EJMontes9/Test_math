@@ -13,7 +13,7 @@ export const useSettings = () => {
 
 export const SettingsProvider = ({ children }) => {
   const [settings, setSettings] = useState({
-    app_name: 'MathMaster',
+    app_name: 'José de Villamil',
     app_primary_color: '#3B82F6',
     app_secondary_color: '#8B5CF6',
     academic_year: new Date().getFullYear().toString(),

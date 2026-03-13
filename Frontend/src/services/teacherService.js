@@ -35,6 +35,17 @@ const teacherService = {
     }
   },
 
+  // Obtener insignias disponibles (para selector en crear meta)
+  getAvailableBadges: async () => {
+    try {
+      const response = await api.get('/teacher/badges');
+      return response.data;
+    } catch (error) {
+      console.error('Error al obtener insignias:', error);
+      throw error.response?.data || { success: false, message: 'Error de conexión' };
+    }
+  },
+
   // ============= GOALS (METAS) =============
 
   // Obtener todas las metas

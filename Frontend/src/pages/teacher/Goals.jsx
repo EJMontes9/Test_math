@@ -42,6 +42,7 @@ const MATH_TOPICS = {
 export default function Goals() {
   const [goals, setGoals] = useState([]);
   const [paralelos, setParalelos] = useState([]);
+  const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -57,6 +58,7 @@ export default function Goals() {
     targetValue: 10,
     topic: '',
     rewardPoints: 100,
+    badgeId: '',
     paraleloId: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -69,13 +71,17 @@ export default function Goals() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [goalsRes, paralelosRes] = await Promise.all([
+      const [goalsRes, paralelosRes, badgesRes] = await Promise.all([
         teacherService.getGoals(paraleloFilter || null, filter !== 'all' ? filter : null),
-        teacherService.getMyParalelos()
+        teacherService.getMyParalelos(),
+        teacherService.getAvailableBadges()
       ]);
 
       if (goalsRes.success) {
         setGoals(goalsRes.data);
+      }
+      if (badgesRes.success) {
+        setBadges(badgesRes.data);
       }
       if (paralelosRes.success) {
         setParalelos(paralelosRes.data);
@@ -97,6 +103,7 @@ export default function Goals() {
         targetValue: parseInt(formData.targetValue),
         topic: formData.goalType === 'topic_mastery' ? formData.topic : null,
         rewardPoints: parseInt(formData.rewardPoints),
+        badgeId: formData.badgeId || null,
         paraleloId: formData.paraleloId || null,
         startDate: new Date(formData.startDate).toISOString(),
         endDate: new Date(formData.endDate).toISOString()
@@ -148,6 +155,7 @@ export default function Goals() {
       targetValue: 10,
       topic: '',
       rewardPoints: 100,
+      badgeId: '',
       paraleloId: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
@@ -357,6 +365,13 @@ export default function Goals() {
                       <span>{goal.rewardPoints} pts</span>
                     </div>
                   </div>
+                  {goal.badgeIcon && (
+                    <div className="flex items-center gap-2 text-sm bg-indigo-50 rounded-lg px-3 py-1.5 mt-1">
+                      <span className="text-lg">{goal.badgeIcon}</span>
+                      <span className="text-indigo-700 font-medium">{goal.badgeName}</span>
+                      <span className="text-indigo-400 text-xs">al completar</span>
+                    </div>
+                  )}
 
                   {/* Dates */}
                   <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -549,6 +564,30 @@ export default function Goals() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                {/* Selector de insignia */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Insignia de Recompensa <span className="text-gray-400 font-normal">(opcional)</span>
+                  </label>
+                  <select
+                    value={formData.badgeId}
+                    onChange={(e) => setFormData({ ...formData, badgeId: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Sin insignia</option>
+                    {badges.map(badge => (
+                      <option key={badge.id} value={badge.id}>
+                        {badge.icon} {badge.name} — {badge.description}
+                      </option>
+                    ))}
+                  </select>
+                  {formData.badgeId && (
+                    <p className="text-xs text-indigo-600 mt-1">
+                      {badges.find(b => b.id === formData.badgeId)?.icon} El estudiante recibirá esta insignia al completar la meta.
+                    </p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
