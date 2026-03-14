@@ -4,6 +4,10 @@
 echo "⏳ Esperando a la base de datos..."
 sleep 5
 
+# Ejecutar migraciones de base de datos
+echo "🔧 Ejecutando migraciones..."
+python migrate_db.py || true
+
 # Crear usuarios por defecto
 echo "👥 Creando usuarios por defecto..."
 python create_default_users.py || true

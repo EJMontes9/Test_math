@@ -9,15 +9,16 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar requirements desde Backend/
-COPY Backend/requirements.txt .
+COPY requirements.txt .
 
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copiar código desde Backend/
-COPY Backend/app ./app
-COPY Backend/create_default_users.py .
-COPY Backend/start.sh .
+# Copiar código
+COPY app ./app
+COPY create_default_users.py .
+COPY migrate_db.py .
+COPY start.sh .
 
 # Crear directorios necesarios
 RUN mkdir -p /app/uploads /app/static/avatars
