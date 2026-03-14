@@ -8,17 +8,17 @@ RUN apt-get update && apt-get install -y \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements desde Backend/
-COPY requirements.txt .
+# Copiar requirements
+COPY Backend/requirements.txt .
 
 # Instalar dependencias de Python
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar código
-COPY app ./app
-COPY create_default_users.py .
-COPY migrate_db.py .
-COPY start.sh .
+COPY Backend/app ./app
+COPY Backend/create_default_users.py .
+COPY Backend/migrate_db.py .
+COPY Backend/start.sh .
 
 # Crear directorios necesarios
 RUN mkdir -p /app/uploads /app/static/avatars

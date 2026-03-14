@@ -1,0 +1,385 @@
+<mxfile host="app.diagrams.net" modified="2026-01-28" agent="Claude Code" version="21.0.0" type="device">
+  <diagram name="Diagrama de Dominio - MathMaster" id="domain-diagram">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <!-- TÍTULO -->
+        <mxCell id="title" value="DIAGRAMA DE DOMINIO - MATHMASTER" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=24;fontStyle=1;fontColor=#1a237e;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="600" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========== USER ========== -->
+        <mxCell id="user" value="USER" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#1565c0;fontColor=#ffffff;strokeColor=#0d47a1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="200" height="280" as="geometry" />
+        </mxCell>
+        <mxCell id="user-attrs" value="+ id: UUID (PK)&#xa;+ email: String (unique)&#xa;+ password: String&#xa;+ first_name: String&#xa;+ last_name: String&#xa;+ role: UserRole&#xa;+ avatar: String&#xa;+ reset_token: String&#xa;+ reset_token_expires: DateTime&#xa;+ is_active: Boolean&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#e3f2fd;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="user">
+          <mxGeometry y="30" width="200" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="user-enum" value="«enum» UserRole:&#xa;admin | teacher | student" style="text;strokeColor=none;fillColor=#bbdefb;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="user">
+          <mxGeometry y="230" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== PARALELO ========== -->
+        <mxCell id="paralelo" value="PARALELO" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#2e7d32;fontColor=#ffffff;strokeColor=#1b5e20;" vertex="1" parent="1">
+          <mxGeometry x="320" y="100" width="200" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="paralelo-attrs" value="+ id: UUID (PK)&#xa;+ name: String&#xa;+ level: String&#xa;+ teacher_id: UUID (FK)&#xa;+ student_count: Integer&#xa;+ is_active: Boolean&#xa;+ description: Text&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#e8f5e9;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="paralelo">
+          <mxGeometry y="30" width="200" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ========== ENROLLMENT ========== -->
+        <mxCell id="enrollment" value="ENROLLMENT" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#7b1fa2;fontColor=#ffffff;strokeColor=#4a148c;" vertex="1" parent="1">
+          <mxGeometry x="40" y="420" width="200" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="enrollment-attrs" value="+ id: UUID (PK)&#xa;+ student_id: UUID (FK)&#xa;+ paralelo_id: UUID (FK)&#xa;+ enrolled_at: DateTime&#xa;+ is_active: Boolean" style="text;strokeColor=none;fillColor=#f3e5f5;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="enrollment">
+          <mxGeometry y="30" width="200" height="120" as="geometry" />
+        </mxCell>
+
+        <!-- ========== EXERCISE ========== -->
+        <mxCell id="exercise" value="EXERCISE" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#f57c00;fontColor=#ffffff;strokeColor=#e65100;" vertex="1" parent="1">
+          <mxGeometry x="600" y="80" width="200" height="350" as="geometry" />
+        </mxCell>
+        <mxCell id="exercise-attrs" value="+ id: UUID (PK)&#xa;+ paralelo_id: UUID (FK)&#xa;+ title: String&#xa;+ description: Text&#xa;+ question: Text&#xa;+ exercise_type: ExerciseType&#xa;+ difficulty: Difficulty&#xa;+ topic: MathTopic&#xa;+ correct_answer: Text&#xa;+ options: Text (JSON)&#xa;+ points: Integer&#xa;+ time_limit: Integer&#xa;+ is_active: Boolean&#xa;+ is_practice: Boolean&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#fff3e0;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="exercise">
+          <mxGeometry y="30" width="200" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="exercise-enum" value="«enums»&#xa;ExerciseType | Difficulty | MathTopic" style="text;strokeColor=none;fillColor=#ffe0b2;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="exercise">
+          <mxGeometry y="290" width="200" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ========== EXERCISE ATTEMPT ========== -->
+        <mxCell id="attempt" value="EXERCISE_ATTEMPT" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#c62828;fontColor=#ffffff;strokeColor=#b71c1c;" vertex="1" parent="1">
+          <mxGeometry x="600" y="480" width="200" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="attempt-attrs" value="+ id: UUID (PK)&#xa;+ exercise_id: UUID (FK)&#xa;+ student_id: UUID (FK)&#xa;+ game_session_id: UUID (FK)&#xa;+ student_answer: Text&#xa;+ is_correct: Boolean&#xa;+ time_taken: Integer&#xa;+ points_earned: Integer&#xa;+ points_lost: Integer&#xa;+ attempted_at: DateTime" style="text;strokeColor=none;fillColor=#ffebee;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="attempt">
+          <mxGeometry y="30" width="200" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ========== GAME SESSION ========== -->
+        <mxCell id="session" value="GAME_SESSION" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#00838f;fontColor=#ffffff;strokeColor=#006064;" vertex="1" parent="1">
+          <mxGeometry x="320" y="420" width="200" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="session-attrs" value="+ id: UUID (PK)&#xa;+ student_id: UUID (FK)&#xa;+ paralelo_id: UUID (FK)&#xa;+ total_score: Integer&#xa;+ exercises_completed: Integer&#xa;+ correct_answers: Integer&#xa;+ wrong_answers: Integer&#xa;+ started_at: DateTime&#xa;+ ended_at: DateTime&#xa;+ is_active: Boolean" style="text;strokeColor=none;fillColor=#e0f7fa;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="session">
+          <mxGeometry y="30" width="200" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ========== STUDENT TOPIC PROGRESS ========== -->
+        <mxCell id="progress" value="STUDENT_TOPIC_PROGRESS" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#5d4037;fontColor=#ffffff;strokeColor=#3e2723;" vertex="1" parent="1">
+          <mxGeometry x="40" y="620" width="200" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="progress-attrs" value="+ id: UUID (PK)&#xa;+ student_id: UUID (FK)&#xa;+ topic: MathTopic&#xa;+ total_attempts: Integer&#xa;+ correct_attempts: Integer&#xa;+ wrong_attempts: Integer&#xa;+ mastery_level: Integer (0-100)&#xa;+ needs_improvement: Boolean&#xa;+ last_practiced: DateTime&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#efebe9;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="progress">
+          <mxGeometry y="30" width="200" height="200" as="geometry" />
+        </mxCell>
+
+        <!-- ========== GOAL ========== -->
+        <mxCell id="goal" value="GOAL" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#6a1b9a;fontColor=#ffffff;strokeColor=#4a148c;" vertex="1" parent="1">
+          <mxGeometry x="880" y="80" width="200" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="goal-attrs" value="+ id: UUID (PK)&#xa;+ teacher_id: UUID (FK)&#xa;+ paralelo_id: UUID (FK)&#xa;+ title: String&#xa;+ description: Text&#xa;+ goal_type: GoalType&#xa;+ target_value: Integer&#xa;+ topic: MathTopic&#xa;+ reward_points: Integer&#xa;+ start_date: DateTime&#xa;+ end_date: DateTime&#xa;+ is_active: Boolean&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#f3e5f5;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="goal">
+          <mxGeometry y="30" width="200" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="goal-enum" value="«enum» GoalType:&#xa;exercises | accuracy | points |&#xa;streak | topic_mastery" style="text;strokeColor=none;fillColor=#e1bee7;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="goal">
+          <mxGeometry y="260" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== STUDENT GOAL ========== -->
+        <mxCell id="studentgoal" value="STUDENT_GOAL" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#ad1457;fontColor=#ffffff;strokeColor=#880e4f;" vertex="1" parent="1">
+          <mxGeometry x="880" y="440" width="200" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="studentgoal-attrs" value="+ id: UUID (PK)&#xa;+ goal_id: UUID (FK)&#xa;+ student_id: UUID (FK)&#xa;+ current_value: Integer&#xa;+ status: GoalStatus&#xa;+ completed_at: DateTime&#xa;+ points_earned: Integer&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#fce4ec;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="studentgoal">
+          <mxGeometry y="30" width="200" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="studentgoal-enum" value="«enum» GoalStatus:&#xa;active | completed | expired | cancelled" style="text;strokeColor=none;fillColor=#f8bbd9;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="studentgoal">
+          <mxGeometry y="180" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== CHALLENGE ========== -->
+        <mxCell id="challenge" value="CHALLENGE" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#d32f2f;fontColor=#ffffff;strokeColor=#b71c1c;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="80" width="200" height="390" as="geometry" />
+        </mxCell>
+        <mxCell id="challenge-attrs" value="+ id: UUID (PK)&#xa;+ teacher_id: UUID (FK)&#xa;+ paralelo1_id: UUID (FK)&#xa;+ paralelo2_id: UUID (FK)&#xa;+ title: String&#xa;+ description: Text&#xa;+ topic: MathTopic&#xa;+ difficulty: Difficulty&#xa;+ num_exercises: Integer&#xa;+ time_limit: Integer&#xa;+ status: ChallengeStatus&#xa;+ winner_paralelo_id: UUID (FK)&#xa;+ paralelo1_score: Integer&#xa;+ paralelo2_score: Integer&#xa;+ start_time: DateTime&#xa;+ end_time: DateTime&#xa;+ is_active: Boolean&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#ffebee;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="challenge">
+          <mxGeometry y="30" width="200" height="310" as="geometry" />
+        </mxCell>
+        <mxCell id="challenge-enum" value="«enum» ChallengeStatus:&#xa;pending | active | completed | cancelled" style="text;strokeColor=none;fillColor=#ffcdd2;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="challenge">
+          <mxGeometry y="340" width="200" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== CHALLENGE PARTICIPANT ========== -->
+        <mxCell id="participant" value="CHALLENGE_PARTICIPANT" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#e64a19;fontColor=#ffffff;strokeColor=#bf360c;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="520" width="200" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="participant-attrs" value="+ id: UUID (PK)&#xa;+ challenge_id: UUID (FK)&#xa;+ student_id: UUID (FK)&#xa;+ paralelo_id: UUID (FK)&#xa;+ score: Integer&#xa;+ exercises_completed: Integer&#xa;+ correct_answers: Integer&#xa;+ wrong_answers: Integer&#xa;+ time_taken: Integer&#xa;+ has_finished: Boolean&#xa;+ joined_at: DateTime&#xa;+ finished_at: DateTime" style="text;strokeColor=none;fillColor=#fbe9e7;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="participant">
+          <mxGeometry y="30" width="200" height="230" as="geometry" />
+        </mxCell>
+
+        <!-- ========== BADGE ========== -->
+        <mxCell id="badge" value="BADGE" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#fbc02d;fontColor=#000000;strokeColor=#f57f17;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="80" width="180" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-attrs" value="+ id: UUID (PK)&#xa;+ name: String&#xa;+ description: Text&#xa;+ icon: String&#xa;+ category: BadgeCategory&#xa;+ requirement: String&#xa;+ requirement_value: Integer&#xa;+ points: Integer&#xa;+ is_active: Boolean&#xa;+ created_at: DateTime" style="text;strokeColor=none;fillColor=#fffde7;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="badge">
+          <mxGeometry y="30" width="180" height="180" as="geometry" />
+        </mxCell>
+        <mxCell id="badge-enum" value="«enum» BadgeCategory:&#xa;achievement | streak | mastery |&#xa;social | special" style="text;strokeColor=none;fillColor=#fff9c4;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="badge">
+          <mxGeometry y="210" width="180" height="50" as="geometry" />
+        </mxCell>
+
+        <!-- ========== STUDENT BADGE ========== -->
+        <mxCell id="studentbadge" value="STUDENT_BADGE" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#ffb300;fontColor=#000000;strokeColor=#ff8f00;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="390" width="180" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="studentbadge-attrs" value="+ id: UUID (PK)&#xa;+ badge_id: UUID (FK)&#xa;+ student_id: UUID (FK)&#xa;+ is_equipped: Boolean&#xa;+ earned_at: DateTime" style="text;strokeColor=none;fillColor=#fff8e1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="studentbadge">
+          <mxGeometry y="30" width="180" height="110" as="geometry" />
+        </mxCell>
+
+        <!-- ========== RESOURCE ========== -->
+        <mxCell id="resource" value="RESOURCE" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#0277bd;fontColor=#ffffff;strokeColor=#01579b;" vertex="1" parent="1">
+          <mxGeometry x="1440" y="580" width="180" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="resource-attrs" value="+ id: UUID (PK)&#xa;+ teacher_id: UUID (FK)&#xa;+ paralelo_id: UUID (FK)&#xa;+ title: String&#xa;+ description: Text&#xa;+ url: String&#xa;+ resource_type: ResourceType&#xa;+ topic: MathTopic&#xa;+ view_count: Integer&#xa;+ is_active: Boolean&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#e1f5fe;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="resource">
+          <mxGeometry y="30" width="180" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="resource-enum" value="«enum» ResourceType:&#xa;pdf | video | link" style="text;strokeColor=none;fillColor=#b3e5fc;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="resource">
+          <mxGeometry y="220" width="180" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========== SETTING ========== -->
+        <mxCell id="setting" value="SETTING" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#455a64;fontColor=#ffffff;strokeColor=#37474f;" vertex="1" parent="1">
+          <mxGeometry x="320" y="700" width="180" height="200" as="geometry" />
+        </mxCell>
+        <mxCell id="setting-attrs" value="+ id: UUID (PK)&#xa;+ key: String (unique)&#xa;+ value: Text&#xa;+ type: SettingType&#xa;+ category: String&#xa;+ description: Text&#xa;+ created_at: DateTime&#xa;+ updated_at: DateTime" style="text;strokeColor=none;fillColor=#eceff1;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="setting">
+          <mxGeometry y="30" width="180" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="setting-enum" value="«enum» SettingType:&#xa;string | number | boolean | json" style="text;strokeColor=none;fillColor=#cfd8dc;align=left;verticalAlign=top;spacingLeft=4;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;fontStyle=2;" vertex="1" parent="setting">
+          <mxGeometry y="160" width="180" height="40" as="geometry" />
+        </mxCell>
+
+        <!-- ========== RELACIONES ========== -->
+
+        <!-- User (teacher) -> Paralelo (1:N) -->
+        <mxCell id="rel1" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#1565c0;" edge="1" parent="1" source="user-attrs" target="paralelo-attrs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="260" y="200" as="sourcePoint" />
+            <mxPoint x="310" y="200" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel1-label" value="teaches" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#1565c0;" vertex="1" connectable="0" parent="rel1">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- User (student) -> Enrollment (1:N) -->
+        <mxCell id="rel2" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#7b1fa2;" edge="1" parent="1" source="user" target="enrollment">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="140" y="390" as="sourcePoint" />
+            <mxPoint x="140" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel2-label" value="enrolls" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#7b1fa2;" vertex="1" connectable="0" parent="rel2">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Paralelo -> Enrollment (1:N) -->
+        <mxCell id="rel3" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#2e7d32;" edge="1" parent="1" source="paralelo" target="enrollment">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="300" y="350" as="sourcePoint" />
+            <mxPoint x="260" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel3-label" value="has" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#2e7d32;" vertex="1" connectable="0" parent="rel3">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="10" y="-5" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Paralelo -> Exercise (1:N) -->
+        <mxCell id="rel4" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#f57c00;" edge="1" parent="1" source="paralelo-attrs" target="exercise-attrs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="530" y="230" as="sourcePoint" />
+            <mxPoint x="590" y="230" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel4-label" value="contains" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#f57c00;" vertex="1" connectable="0" parent="rel4">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- User (student) -> GameSession (1:N) -->
+        <mxCell id="rel5" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#00838f;" edge="1" parent="1" source="user" target="session">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="250" y="390" as="sourcePoint" />
+            <mxPoint x="310" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel5-label" value="plays" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#00838f;" vertex="1" connectable="0" parent="rel5">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- GameSession -> ExerciseAttempt (1:N) -->
+        <mxCell id="rel6" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#c62828;" edge="1" parent="1" source="session-attrs" target="attempt-attrs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="530" y="550" as="sourcePoint" />
+            <mxPoint x="590" y="550" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel6-label" value="generates" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#c62828;" vertex="1" connectable="0" parent="rel6">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Exercise -> ExerciseAttempt (1:N) -->
+        <mxCell id="rel7" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#c62828;" edge="1" parent="1" source="exercise" target="attempt">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="440" as="sourcePoint" />
+            <mxPoint x="700" y="480" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel7-label" value="attempted" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#c62828;" vertex="1" connectable="0" parent="rel7">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- User (student) -> StudentTopicProgress (1:N) -->
+        <mxCell id="rel8" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#5d4037;curved=1;" edge="1" parent="1" source="user" target="progress">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="30" y="390" as="sourcePoint" />
+            <mxPoint x="30" y="620" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="20" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel8-label" value="tracks" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#5d4037;" vertex="1" connectable="0" parent="rel8">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="-20" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- User (teacher) -> Goal (1:N) -->
+        <mxCell id="rel9" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#6a1b9a;curved=1;" edge="1" parent="1" source="user" target="goal">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="250" y="100" as="sourcePoint" />
+            <mxPoint x="870" y="100" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="580" y="60" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel9-label" value="creates goals" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#6a1b9a;" vertex="1" connectable="0" parent="rel9">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Goal -> StudentGoal (1:N) -->
+        <mxCell id="rel10" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#ad1457;" edge="1" parent="1" source="goal" target="studentgoal">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="980" y="400" as="sourcePoint" />
+            <mxPoint x="980" y="440" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel10-label" value="assigned to" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#ad1457;" vertex="1" connectable="0" parent="rel10">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="30" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- User (teacher) -> Challenge (1:N) -->
+        <mxCell id="rel11" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#d32f2f;curved=1;" edge="1" parent="1" source="user" target="challenge">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="250" y="80" as="sourcePoint" />
+            <mxPoint x="1150" y="80" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="700" y="40" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel11-label" value="creates challenges" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#d32f2f;" vertex="1" connectable="0" parent="rel11">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Challenge -> ChallengeParticipant (1:N) -->
+        <mxCell id="rel12" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#e64a19;" edge="1" parent="1" source="challenge" target="participant">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1260" y="480" as="sourcePoint" />
+            <mxPoint x="1260" y="520" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel12-label" value="has" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#e64a19;" vertex="1" connectable="0" parent="rel12">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="15" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Badge -> StudentBadge (1:N) -->
+        <mxCell id="rel13" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#ffb300;" edge="1" parent="1" source="badge" target="studentbadge">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="1530" y="350" as="sourcePoint" />
+            <mxPoint x="1530" y="390" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel13-label" value="earned by" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#ff8f00;" vertex="1" connectable="0" parent="rel13">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="25" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- User (teacher) -> Resource (1:N) -->
+        <mxCell id="rel14" value="1:N" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#0277bd;curved=1;" edge="1" parent="1" source="user" target="resource">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="250" y="240" as="sourcePoint" />
+            <mxPoint x="1430" y="700" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="280" y="240" />
+              <mxPoint x="280" y="900" />
+              <mxPoint x="1400" y="900" />
+              <mxPoint x="1400" y="710" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel14-label" value="shares" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#0277bd;" vertex="1" connectable="0" parent="rel14">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="-200" y="-10" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Paralelo -> Challenge (N:M via paralelo1/paralelo2) -->
+        <mxCell id="rel15" value="N:M" style="endArrow=classic;startArrow=classic;html=1;rounded=0;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeWidth=2;strokeColor=#d32f2f;curved=1;" edge="1" parent="1" source="paralelo" target="challenge-attrs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="530" y="100" as="sourcePoint" />
+            <mxPoint x="1150" y="250" as="targetPoint" />
+            <Array as="points">
+              <mxPoint x="800" y="100" />
+              <mxPoint x="1100" y="100" />
+              <mxPoint x="1100" y="250" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="rel15-label" value="competes" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontStyle=2;fontColor=#d32f2f;" vertex="1" connectable="0" parent="rel15">
+          <mxGeometry x="-0.1" y="1" relative="1" as="geometry">
+            <mxPoint x="50" y="-12" as="offset" />
+          </mxGeometry>
+        </mxCell>
+
+        <!-- LEYENDA -->
+        <mxCell id="legend" value="LEYENDA" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=25;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#37474f;fontColor=#ffffff;strokeColor=#263238;" vertex="1" parent="1">
+          <mxGeometry x="560" y="760" width="480" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="legend-content" value="PK = Primary Key (Clave Primaria)     |     FK = Foreign Key (Clave Foranea)&#xa;1:N = Relacion Uno a Muchos           |     N:M = Relacion Muchos a Muchos&#xa;&#xa;Colores por Modulo:&#xa;Azul=Usuarios | Verde=Paralelos | Naranja=Ejercicios | Rojo=Intentos/Challenges&#xa;Morado=Metas | Cyan=Sesiones | Amarillo=Insignias | Gris=Configuracion" style="text;strokeColor=none;fillColor=#eceff1;align=left;verticalAlign=top;spacingLeft=8;spacingRight=4;overflow=hidden;rotatable=0;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;whiteSpace=wrap;html=1;" vertex="1" parent="legend">
+          <mxGeometry y="25" width="480" height="95" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
