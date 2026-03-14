@@ -1,0 +1,4 @@
+# Forzar LF en archivos que se ejecutan en Linux
+*.sh text eol=lf
+*.py text eol=lf
+Dockerfile text eol=lf
