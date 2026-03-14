@@ -1053,8 +1053,10 @@ async def get_student_goals(
         ).first()
 
         if not student_goal:
-            # Crear registro para este estudiante si la meta esta dentro del periodo
-            if goal.start_date <= now <= goal.end_date:
+            # Crear registro si la meta no ha expirado aun
+            end_date_naive = goal.end_date.replace(tzinfo=None) if goal.end_date.tzinfo else goal.end_date
+            now_naive = datetime.now()
+            if end_date_naive >= now_naive:
                 student_goal = StudentGoal(
                     goal_id=goal.id,
                     student_id=current_user.id,
@@ -1066,7 +1068,9 @@ async def get_student_goals(
 
         if student_goal:
             # Verificar si expiro
-            if goal.end_date < now and student_goal.status == GoalStatus.active:
+            end_date_naive = goal.end_date.replace(tzinfo=None) if goal.end_date.tzinfo else goal.end_date
+            now_naive = datetime.now()
+            if end_date_naive < now_naive and student_goal.status == GoalStatus.active:
                 student_goal.status = GoalStatus.expired
                 db.flush()
 
