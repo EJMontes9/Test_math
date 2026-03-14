@@ -72,7 +72,28 @@ def run_migration():
                 conn.rollback()
                 print(f"  ⚠️  Error en 'badges.{col_name}': {e}")
 
-        # 3. Crear tabla 'goals' si no existe
+        # 3. Agregar columnas faltantes a la tabla 'goals' (si ya existe)
+        print("\n📦 Actualizando tabla 'goals' (columnas faltantes)...")
+
+        goals_migrations = [
+            ("badge_id", "UUID REFERENCES badges(id) ON DELETE SET NULL"),
+            ("topic", "VARCHAR"),
+            ("reward_points", "INTEGER DEFAULT 100"),
+            ("updated_at", "TIMESTAMP WITH TIME ZONE DEFAULT NOW()"),
+        ]
+
+        for col_name, col_def in goals_migrations:
+            try:
+                conn.execute(text(
+                    f"ALTER TABLE goals ADD COLUMN IF NOT EXISTS {col_name} {col_def}"
+                ))
+                conn.commit()
+                print(f"  ✅ Columna 'goals.{col_name}' agregada/verificada")
+            except Exception as e:
+                conn.rollback()
+                print(f"  ⚠️  Error en 'goals.{col_name}': {e}")
+
+        # 4. Crear tabla 'goals' si no existe
         print("\n📦 Verificando tabla 'goals'...")
         try:
             conn.execute(text("""
